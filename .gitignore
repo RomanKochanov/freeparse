@@ -1,0 +1,17 @@
+*/__pycache__
+*/__pycache__/*
+
+*~
+*.lnk
+
+*.pyc
+*.bak
+
+build/
+dist/
+freeparse.egg-info/
+
+tests/*
+!tests/*.py
+
+showcase/.ipynb_checkpoints
