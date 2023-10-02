@@ -60,21 +60,9 @@ def main():
     
     # Set the verbosity level.
     VARSPACE['DEBUG'] = args.verbose
-        
-    # If specified, generate a railroad diagram.
-    if args.diagram is not None:
 
-        if not grammar_flag:
-            raise Exception('XML grammar not provided')
-            
-        if args.diagram=='':
-            args.diagram = get_filestem(args.grammar) + '.html'
+    #print('args.diagram>>>',args.diagram,type(args.diagram))
 
-        tree.create_grammar()
-        tree.grammar.create_diagram(args.diagram)
-        
-        print('Railroad diagram was saved to',args.diagram)
-    
     if args.sniff_encoding:
         
         if not args.input:
@@ -85,14 +73,28 @@ def main():
         with open(args.input,'rb') as f:
             binbuf = f.read()
 
-        print('sniffing encoding...')
+        print('detecting input file encoding...')
 
         dammit = UnicodeDammit(binbuf)
         #print(dammit.unicode_markup) # print data
 
-        print('my guess for encoding:',dammit.original_encoding)
-    
-    elif args.input:
+        print(dammit.original_encoding)
+        
+    # If specified, generate a railroad diagram.
+    if args.diagram is not None and args.grammar:
+
+        if not grammar_flag:
+            raise Exception('XML grammar not provided')
+            
+        if args.diagram=='':
+            args.diagram = get_filestem(args.grammar) + '.html'
+
+        tree.create_grammar()
+        tree.grammar.create_diagram(args.diagram)
+        
+        print('Diagram was saved to',args.diagram)
+        
+    if args.input and args.grammar:
         
         if not grammar_flag:
             raise Exception('XML grammar not provided')
