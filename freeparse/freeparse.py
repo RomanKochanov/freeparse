@@ -163,6 +163,7 @@ class ParsingTree:
             
         _print('collect_grammar_from_children>>>gg|1',gg)
         
+        gg = [g for g in gg if g] # get rid of empty grammars     
         grammar_body = reduce(lambda x,y:x+y,gg) if gg else None
         
         _print('collect_grammar_from_children>>>grammar_body',grammar_body)
@@ -612,12 +613,15 @@ class TreeOPTIONAL(ParsingTreeAux):
 
 class TreeEOL(ParsingTreeAux):
 
+    #def process(self,grammar_body,grammar_tail):
+    #    grammar = sum_grammars(grammar_body,grammar_tail)
+    #    if grammar:
+    #        return EOL+grammar
+    #    else:
+    #        return EOL
+    
     def process(self,grammar_body,grammar_tail):
-        grammar = sum_grammars(grammar_body,grammar_tail)
-        if grammar:
-            return EOL+grammar
-        else:
-            return EOL
+        return None # stub for EOL
 
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
     
