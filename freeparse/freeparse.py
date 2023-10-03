@@ -433,7 +433,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
 
     @classmethod
     def get_buffer(cls):
-        return BufferDict()
+        return BufferList()
 
     def getGrammar(self):
                         
@@ -488,24 +488,12 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         # initialization
         f = io.StringIO(self.__text__)
         buf = self.__buffer__
-        gg = [] # grammars for each column
-        
-        # Append line start.
-        #gg.append(LineStart())
-        
-        # create a trigger function
-        def add_to_buffer_BAK(buf,key,token,type_):
-            _print('add_to_buffer>>>key="%s",token="%s",type_="%s",buf="%s"'%(key,token,type_,buf.__buffer__))
-            #value = type_(token)
-            value = token
-            buf.insert(key,value)
-            
-        def trigger_factory(buf,key,type_):
-            def add_to_buffer(tokens):
-                #_print('add_to_buffer>>>key="%s",token="%s",type_="%s",buf="%s"'%(key,token,type_,buf.__buffer__))
-                token = tokens[0]
-                value = type_(token)
-                buf.insert(key,value)
+                
+        def trigger_factory(buf,types):
+            def add_to_buffer(tokens):         
+                dct = tokens.as_dict()
+                item = {key:types[key](dct[key]) for key in dct}
+                buf.insert(None,item)
             return add_to_buffer
     
         # Search for //HEADER section.    
@@ -546,48 +534,47 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #markup = re.findall('([^_]+_*)',widths) # doesn't give indexes
         
         # create a list of grammars and attach triggers
+        regex = ''
+        types = {}
         for token in HEAD:      
             type_ = HEAD[token]['type']
             key = HEAD[token]['name']
             i_start = HEAD[token]['i_start']
             i_end = HEAD[token]['i_end']
             length = i_end-i_start
-            #g = Word(list(printables)+[' '],min=length,max=length)
-            g = Word(printables + " ", exact=length)
-            #g.set_default_whitespace_chars('') # ???!!!
-            #g.set_results_name(key)
-            #g.setParseAction(lambda tokens: add_to_buffer(buf,key,tokens[0],type_))
-            add_to_buffer = trigger_factory(buf,key,type_) # produce with factory (proper closures!!)
-            g.setParseAction(add_to_buffer)
+            regex += '(?P<%s>.{%d})'%(key,length)
+            types[key] = type_
             _print('======================================')
             _print('collect_grammar_fixcol>>>loop>>token',token)
             _print('collect_grammar_fixcol>>>loop>>key',key)
             _print('collect_grammar_fixcol>>>loop>>type_',type_)
             _print('collect_grammar_fixcol>>>loop>>i_start',i_start)
             _print('collect_grammar_fixcol>>>loop>>i_end',i_end)
-            _print('collect_grammar_fixcol>>>loop>>length',length)
-            _print('collect_grammar_fixcol>>>loop>>g',g)
+            _print('collect_grammar_fixcol>>>loop>>length',length)            
             _print('======================================')
-            gg.append(g)
-            
-        # append rest of line
-        #gg.append(restOfLine())
         
-        # append end of line
-        #gg.append(EOL)
+        #regex = '^' + regex + '$'
+        #regex = '^' + regex
+        _print('collect_grammar_fixcol>>>loop>>regex',regex)
+            
+        add_to_buffer = trigger_factory(buf,types) # produce with factory (proper closures!!)
             
         # make a single grammar for body
-        grammar_body = reduce(lambda x,y: x+y,gg)
+        grammar_body = Regex(regex)
+        grammar_body.setParseAction(add_to_buffer)
         _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
         
         # combine grammar body to weed out extra spaces
-        grammar_body = Combine(grammar_body) 
-        _print('collect_grammar_fixcol>>>Combine(grammar_body)',grammar_body)
+        #grammar_body = Combine(grammar_body) 
+        #_print('collect_grammar_fixcol>>>Combine(grammar_body)',grammar_body)
         
         #grammar_body = LineStart() + grammar_body + LineEnd()
         #grammar_body = LineEnd() + grammar_body
         
         #grammar_body = grammar_body.leaveWhitespace() # THIS IS NECESSARY!!!
+
+        #grammar_body = ZeroOrMore(LineEnd()+grammar_body).leaveWhitespace()
+        grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace()
 
         # create a tail grammar, if present
         if self.__tail__ is not None:
