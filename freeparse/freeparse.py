@@ -216,7 +216,10 @@ class ParsingTree:
     def getGrammar(self):
         raise NotImplementedError
 
-    def get_grammar(self): # rename?
+    def init_grammar(self):
+        raise NotImplementedError
+
+    def post_process(self):
         raise NotImplementedError
         
 class ParsingTreeValue(ParsingTree):    
@@ -227,10 +230,13 @@ class ParsingTreeValue(ParsingTree):
     @classmethod
     def get_buffer(cls):
         return BufferStub()
+            
+    def post_process(self,grammar):
+        return grammar
     
     def getGrammar(self):
         
-        grammar = self.get_grammar()
+        grammar = self.init_grammar()
         type_ = self.get_type()
         
         # add type conversion
@@ -259,11 +265,16 @@ class ParsingTreeValue(ParsingTree):
 
         _print('ParsingTreeValue.getGrammar>>>grammar',grammar)
         
+        #grammar = Group(grammar) # !!! without this regex and text do not work.
+        # ??? is it necessary to assign a group to each value???
+        
+        grammar = self.post_process(grammar)
+        
         return grammar
         
 class TreeFLOAT(ParsingTreeValue):
     
-    def get_grammar(self):
+    def init_grammar(self):
         return ppc.number()
     
     def get_type(self):
@@ -271,7 +282,7 @@ class TreeFLOAT(ParsingTreeValue):
     
 class TreeINT(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         return ppc.number()
     
     def get_type(self):
@@ -279,7 +290,7 @@ class TreeINT(ParsingTreeValue):
 
 class TreeSTR(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         return Word(printables)
     
     def get_type(self):
@@ -287,7 +298,7 @@ class TreeSTR(ParsingTreeValue):
 
 class TreeLITERAL(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         inp = self.__xmlroot__.get('input')
         if not inp: raise Exception('LITERAL tag must '
                 'have "input" parameter specified')
@@ -298,7 +309,7 @@ class TreeLITERAL(ParsingTreeValue):
 
 class TreeWORD(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         inp = self.__xmlroot__.get('input')
         #if not inp: inp = printables
         if not inp: inp = pyparsing_unicode.printables
@@ -309,7 +320,7 @@ class TreeWORD(ParsingTreeValue):
 
 class TreeRESTOFLINE(ParsingTreeValue):
     
-    def get_grammar(self):
+    def init_grammar(self):
         return restOfLine()
     
     def get_type(self):
@@ -317,7 +328,7 @@ class TreeRESTOFLINE(ParsingTreeValue):
 
 class TreeREGEX(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         inp = self.__xmlroot__.get('input')
         if not inp: 
             raise Exception('regex is empty')
@@ -325,10 +336,13 @@ class TreeREGEX(ParsingTreeValue):
     
     def get_type(self):
         return str
+        
+    def post_process(self,grammar):
+        return Group(grammar)
 
 class TreeTEXT(ParsingTreeValue):
 
-    def get_grammar(self):
+    def init_grammar(self):
         begin = self.__xmlroot__.get('begin')
         end = self.__xmlroot__.get('end')
         if not (begin and end): 
@@ -337,6 +351,9 @@ class TreeTEXT(ParsingTreeValue):
     
     def get_type(self):
         return str
+
+    def post_process(self,grammar):
+        return Group(grammar)
 
 class ParsingTreeContainer(ParsingTree):
     """
@@ -627,6 +644,12 @@ class TreeCOMBINE(ParsingTreeAux):
         grammar_body = Combine(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
 
+class TreeGROUP(ParsingTreeAux): 
+    
+    def process(self,grammar_body,grammar_tail):
+        grammar_body = Group(grammar_body)
+        return sum_grammars(grammar_body,grammar_tail)
+
 DISPATCHER = {
     'FLOAT': TreeFLOAT,
     'INT': TreeINT,
@@ -645,6 +668,7 @@ DISPATCHER = {
     'FIXCOL': TreeFIXCOL,
     'LEAVEWHITESPACE': TreeLEAVEWHITESPACE,
     'COMBINE': TreeCOMBINE,
+    'GROUP': TreeGROUP,
 }
 
 # MAIN INTERFACE FUNCTIONS
