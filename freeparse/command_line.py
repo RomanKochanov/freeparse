@@ -43,6 +43,10 @@ def main():
 
     parser.add_argument('--format', type=str, default='json',
         help='Format of the output file (optional): pickle, json')
+
+    parser.add_argument('--generate', dest='generate',
+        action='store_const', const=True, default=False,
+        help='Generate raw text file using XML and data structure')
         
     parser.add_argument('--verbose', dest='verbose',
         action='store_const', const=True, default=False,
@@ -80,6 +84,8 @@ def main():
 
         print(dammit.original_encoding)
         
+        args.encoding = dammit.original_encoding
+        
     # If specified, generate a railroad diagram.
     if args.diagram is not None and args.grammar:
 
@@ -94,42 +100,66 @@ def main():
         
         print('Diagram was saved to',args.diagram)
         
-    if args.input and args.grammar:
+    if not args.generate: # get data structure from raw file and XML format
         
-        if not grammar_flag:
-            raise Exception('XML grammar not provided')
+        # freeparse --grammar test.xml --input test.json --format json --output test.json
         
-        tree.parse_file(args.input,encoding=args.encoding)
-        data = tree.get_data()
+        if args.input and args.grammar:
         
-        if not args.output:
-            stem = get_filestem(args.input)
+            if not grammar_flag:
+                raise Exception('XML grammar not provided')
         
-        if args.format=='json':
-            outbuf = json.dumps(data,indent=2)
-            outfile = args.output if args.output else stem+'.json'
+            tree.parse_file(args.input,encoding=args.encoding)
+            data = tree.get_data()
+        
+            if not args.output:
+                stem = get_filestem(args.input)
+        
+            if args.format=='json':
+                outbuf = json.dumps(data,indent=2)
+                outfile = args.output if args.output else stem+'.json'
+                with open(outfile,'w') as f:
+                    f.write(outbuf)
+        
+            elif args.format=='pickle':
+                outbuf = pickle.dumps(data)
+                outfile = args.output if args.output else stem+'.pickle'
+                with open(outfile,'wb') as f:
+                    f.write(outbuf)
+            else:
+                raise Exception('unknown format: "%s"'%args.format)
+        
+            print('Output saved to',outfile)
+            
+    else: # get raw file from data structure and XML format
+
+        if args.input and args.grammar:
+
+            # freeparse --grammar test.xml --input test.json --format json --generate --output test.raw
+
+            if not grammar_flag:
+                raise Exception('XML grammar not provided')
+
+            if args.format=='json':
+                with open(args.input,'r') as f:
+                    data = json.load(f)
+        
+            elif args.format=='pickle':
+                with open(args.input,'rb') as f:
+                    data = pickle.load(f)
+            else:
+                raise Exception('unknown format: "%s"'%args.format)
+
+            if not args.output:
+                outfile,_ = os.path.splitext(args.input)
+            else:
+                outfile = args.output
+                
+            buf = tree.generate(data)
             with open(outfile,'w') as f:
-                f.write(outbuf)
-        
-        elif args.format=='pickle':
-            outbuf = pickle.dumps(data)
-            outfile = args.output if args.output else stem+'.pickle'
-            with open(outfile,'wb') as f:
-                f.write(outbuf)
-        else:
-            raise Exception('unknown format: "%s"'%args.format)
-        
-        print('Output saved to',outfile)
+                f.write(buf)
 
-
-
-
-
-
-
-
-
-
+            print('Output saved to',outfile)
 
 
 

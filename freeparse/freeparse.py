@@ -4,7 +4,9 @@ import json
 import pyparsing as pp
 
 from copy import deepcopy
+
 from functools import reduce
+from itertools import cycle
 
 from pyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
@@ -24,6 +26,10 @@ VARSPACE = {
 def _print(*args):
     if VARSPACE['DEBUG']: print(*args)
 
+class GenerationError(Exception):
+    "Raised when the raw file generation has been failed"
+    pass
+    
 class Buffer:
     
     def __init__(self):
@@ -93,6 +99,16 @@ def sum_grammars(*grammars):
     grammar = reduce(lambda x,y: x+y,gg) if gg else None
     return grammar
 
+def process_text(txt):
+    if not txt: return txt
+    if txt[0]=='\n': return txt[1:]
+    return txt
+
+def process_tail(txt):
+    if not txt: return txt
+    if txt[0]=='\n': return txt[1:]
+    return txt
+
 class ParsingTree:
     
     """
@@ -135,8 +151,8 @@ class ParsingTree:
         self.__buffer__ = self.__class__.get_buffer()
         self.__xmlroot__ = xmlroot  
         self.__tag__ = xmlroot.tag  
-        self.__text__ = xmlroot.text
-        self.__tail__ = xmlroot.tail    
+        self.__text__ = process_text(xmlroot.text)
+        self.__tail__ = process_tail(xmlroot.tail)
         self.__varname__ = xmlroot.get('name')
         self.__children__ = [] # each child is a tag
         
@@ -177,6 +193,29 @@ class ParsingTree:
         _print('collect_grammar_from_children>>>grammar_tail',grammar_tail)
                         
         return grammar_body,grammar_tail
+        
+    def generate(self,data):
+        """
+        Tries to generate a "raw" file from data structure using stored format.
+        This is needed to have a full cycle "parse->analyze->substitute->generate".
+        """
+        
+        #_print('ParsingTree.generate>>>data',data)
+        
+        buf = ''
+        
+        if self.__text__: buf += self.__text__
+        if self.__text__: _print('ParsingTree.generate>>>self.__text__',self.__text__)
+        
+        data_generator = self.get_data_generator(data)
+        
+        for el,subdata in data_generator:
+            buf += el.generate(subdata)
+        
+        if self.__tail__: buf += self.__tail__
+        if self.__tail__: _print('ParsingTree.generate>>>self.__text__',self.__tail__)
+        
+        return buf        
         
     def print_tree(self,level=0,show_buffer=False):
         print('\n'+("=="*level),self.__tag__,self.__varname__)
@@ -221,6 +260,9 @@ class ParsingTree:
         raise NotImplementedError
 
     def post_process(self):
+        raise NotImplementedError
+        
+    def get_data_generator(self,data):
         raise NotImplementedError
         
 class ParsingTreeValue(ParsingTree):    
@@ -273,6 +315,19 @@ class ParsingTreeValue(ParsingTree):
         
         return grammar
         
+    def generate(self,data):
+        # Do a common type comparison check.
+        self_type = self.get_type()
+        data_type = type(data)
+        if self_type!=data_type:
+            raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
+        # Do a type-specific check.
+        self.check_data(data) 
+        return str(data)
+        
+    def check_data(self,data):
+        pass
+        
 class TreeFLOAT(ParsingTreeValue):
     
     def init_grammar(self):
@@ -280,7 +335,7 @@ class TreeFLOAT(ParsingTreeValue):
     
     def get_type(self):
         return float
-    
+            
 class TreeINT(ParsingTreeValue):
 
     def init_grammar(self):
@@ -308,6 +363,11 @@ class TreeLITERAL(ParsingTreeValue):
     def get_type(self):
         return str
 
+    def check_data(self,data):
+        inp = self.__xmlroot__.get('input')
+        if inp != data:
+            raise GenerationError('"%s" <> "%s" for %s'%(inp,data,self.__tag__))
+
 class TreeWORD(ParsingTreeValue):
 
     def init_grammar(self):
@@ -318,6 +378,11 @@ class TreeWORD(ParsingTreeValue):
     
     def get_type(self):
         return str
+
+    def check_data(self,data):
+        inp = self.__xmlroot__.get('input')
+        if set(data) not in set(inp):
+            raise GenerationError('"%s" is not a word of "%s" for %s'%(data,inp,self.__tag__))
 
 class TreeRESTOFLINE(ParsingTreeValue):
     
@@ -330,16 +395,21 @@ class TreeRESTOFLINE(ParsingTreeValue):
 class TreeREGEX(ParsingTreeValue):
 
     def init_grammar(self):
-        inp = self.__xmlroot__.get('input')
-        if not inp: 
+        regex = self.__xmlroot__.get('input')
+        if not regex: 
             raise Exception('regex is empty')
-        return Regex(inp)
+        return Regex(regex)
     
     def get_type(self):
         return str
         
     def post_process(self,grammar):
         return Group(grammar)
+
+    def check_data(self,data):
+        regex = self.__xmlroot__.get('input')
+        if not re.match(regex,data):
+            raise GenerationError('regex(%s) for %s not matched: "%s"'%(regex,self.__tag__,data))
 
 class TreeTEXT(ParsingTreeValue):
 
@@ -348,13 +418,23 @@ class TreeTEXT(ParsingTreeValue):
         end = self.__xmlroot__.get('end')
         if not (begin and end): 
             raise Exception('text should have both "begin" and "end" fields')
-        return Regex(begin+'[\s\S]*'+end)
+        regex = begin+'[\s\S]*'+end
+        return Regex(regex)
     
     def get_type(self):
         return str
 
     def post_process(self,grammar):
         return Group(grammar)
+
+    def check_data(self,data):        
+        begin = self.__xmlroot__.get('begin')
+        end = self.__xmlroot__.get('end')
+        if not (begin and end): 
+            raise Exception('text should have both "begin" and "end" fields')
+        regex = begin+'[\s\S]*'+end        
+        if not re.match(regex,data):
+            raise GenerationError('regex(%s) for %s not matched: "%s"'%(regex,self.__tag__,data))
 
 class ParsingTreeContainer(ParsingTree):
     """
@@ -402,6 +482,11 @@ class TreeDICT(ParsingTreeContainer):
 
     def process(self,grammar_body,grammar_tail):
         return sum_grammars(grammar_body,grammar_tail)
+        
+    def get_data_generator(self,data):
+        for el in self.__children__:
+            key = el.__xmlroot__.get('name')
+            yield el,data[key]
 
 class TreeLIST(ParsingTreeContainer):
     """ Static list """
@@ -412,6 +497,13 @@ class TreeLIST(ParsingTreeContainer):
 
     def process(self,grammar_body,grammar_tail):
         return sum_grammars(grammar_body,grammar_tail)
+        
+    def get_data_generator(self,data):
+        raise NotImplementedError    
+    
+    def get_data_generator(self,data):
+        for el,datum in zip(self.__children__,data):            
+            yield el,datum
     
 class TreeLOOP(ParsingTreeContainer):
     """ Dynamic list, zero or more repetitions """
@@ -423,6 +515,10 @@ class TreeLOOP(ParsingTreeContainer):
     def process(self,grammar_body,grammar_tail):
         grammar_body = ZeroOrMore(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
+        
+    def get_data_generator(self,data):        
+        for el,datum in zip(cycle(self.__children__),data):
+            yield el,datum
 
 class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (needs some refactoring!)
     """
@@ -575,8 +671,10 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #grammar_body = grammar_body.leaveWhitespace() # THIS IS NECESSARY!!!
 
         #grammar_body = ZeroOrMore(LineEnd()+grammar_body).leaveWhitespace()
-        grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace()
-
+        
+        #grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace() # WORKS, BUT NOT WITH LEADING EOLS
+        grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS
+                
         # create a tail grammar, if present
         if self.__tail__ is not None:
             grammar_tail = self.__tail__.strip()
@@ -584,11 +682,48 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             grammar_tail = None
             
         _print('collect_grammar>>>grammar_tail',grammar_tail)
+        
+        # save for using in generate
+        self.__types__ = TYPES
+        self.__head__ = HEAD
                         
         return grammar_body,grammar_tail        
 
     def process(self,grammar_body,grammar_tail):
         return sum_grammars(grammar_body,grammar_tail)
+        
+    def generate(self,data):
+        
+        TYPES = self.__types__
+        HEAD = self.__head__
+        
+        #FORMATS = {str:'%%%ds',int:'%%%dd',float:'%%%de'}
+        
+        tokens = HEAD.keys()
+        names = [HEAD[t]['name'] for t in tokens]
+        
+        buf = ''
+        for item in data:
+            vals = [item[name] for name in names]
+            line = ''
+            line_length = 0
+            for val,token in zip(vals,tokens):
+                name = HEAD[token]['name']
+                i_start = HEAD[token]['i_start']
+                i_end = HEAD[token]['i_end']
+                #type_ = TYPES[name]
+                length = i_end-i_start
+                b = '%%%ds'%length%str(val)
+                assert len(b)==length, 'len("%s")=%d!=%d'%(b,len(b),length)
+                buf += b
+            buf += '\n'
+            
+        if self.__tail__:
+            tail = process_tail(self.__tail__)
+            _print('TreeFIXCOL.generate>>>process_tail(self.__tail__)',tail,type(tail))
+            buf += tail
+            
+        return buf
 
 class ParsingTreeAux(ParsingTree):
     """
