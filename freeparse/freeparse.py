@@ -323,7 +323,10 @@ class ParsingTreeValue(ParsingTree):
             raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
         # Do a type-specific check.
         self.check_data(data) 
-        return str(data)
+        buf = str(data)
+        if self.__tail__: 
+            buf += process_tail(self.__tail__)
+        return buf
         
     def check_data(self,data):
         pass
@@ -756,7 +759,8 @@ class TreeEOL(ParsingTreeAux):
     #        return EOL
     
     def process(self,grammar_body,grammar_tail):
-        return None # stub for EOL
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        return grammar
 
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
     
