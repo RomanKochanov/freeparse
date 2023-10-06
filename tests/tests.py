@@ -1,4 +1,6 @@
 import sys
+import json
+
 from time import time
 from jeanny3 import Collection, uuid
 
@@ -7,6 +9,7 @@ from freeparse import ET, ParsingTree
 from unittests import runtest 
 
 def do_test(XML,BUFFER):
+    """ simple tests without back-loop """
     t = time()
     # parse XML file
     TMPFILE = '~.xml'
@@ -44,6 +47,98 @@ def do_test(XML,BUFFER):
     parse_tree.print_tree(show_buffer=True)
     t = time()-t
     return t,Collection()
+
+def do_test2(XML,BUFFER):
+    """ tests with back-loop, i.e. with comparing re-parsed data structure
+    form re-generated war file with the original input datastructure """
+    t = time()
+    ##############################################################
+    # 1ST STEP - PARSE DATA STRUCTURE FROM THE ORIGINAL RAW FILE.
+    ##############################################################
+    # parse XML file
+    TMPFILE = '~.xml'
+    with open(TMPFILE,'w') as f:
+        f.write(XML)
+    xmltree = ET.parse(TMPFILE)
+    xmlroot = xmltree.getroot()
+    # create parse tree from the XML node
+    print('\n-----------------------------------')
+    print('----- CREATING TREE ----------------')
+    print('------------------------------------\n')
+    parse_tree = ParsingTree.create_tree(xmlroot)
+    parse_tree.print_tree(show_buffer=False)
+    # get grammar and empty container structure
+    print('\n-----------------------------------')
+    print('----- CREATING GRAMMAR/DIAGRAM -----')
+    print('------------------------------------\n')
+    grammar = parse_tree.getGrammar()
+    # create railroad diagram
+    grammar.create_diagram("grammar.html",
+        show_results_names=True,show_groups=True,vertical=3)
+    # parse buffer
+    print('\n-----------------------------------')
+    print('----- SEARCHING STRING -------------')
+    print('------------------------------------\n')
+    res = grammar.parse_string(BUFFER)
+    # print results
+    print('------------------------------- parse result')
+    print(res)
+    print('------------------------------- input text')
+    print(BUFFER)
+    print('------------------------------- pyparsing grammar')
+    print(grammar)
+    print('------------------------------- buffer tree')
+    parse_tree.print_tree(show_buffer=True)
+    print('\n-----------------------------------')
+    print('----- SAVING TO JSON ---------------')
+    print('------------------------------------\n')
+    data = parse_tree.get_data()
+    outfile = '~data1.json'
+    with open(outfile,'w') as f:
+        f.write(json.dumps(data,indent=2))
+    print('1st stage output saved to',outfile)
+    ##############################################################
+    # 2ND STEP - GENERATE NEW RAW FILE FROM THE DATA STRUCTURE,
+    # PARSE IT AGAIN AND COMPARE THE RESULTING DATA STRUCTURE 
+    # WITH THE ORIGINAL ONE.
+    ##############################################################
+    # Import data from file.
+    with open(outfile) as f:
+        data = json.load(f)
+    # Generate new raw file from it.
+    rawbuf = parse_tree.generate(data)
+    print('\n-----------------------------------')
+    print('----- GENERATING NEW BUF------------')
+    print('------------------------------------\n')
+    print(rawbuf)
+    print('------------------------------------\n')
+    # Parse the newly generated raw file.
+    #parse_tree = ParsingTree.create_tree(xmlroot)
+    parse_tree.parse_string(rawbuf)
+    data_ = parse_tree.get_data()
+    #print('DATA')
+    #print(data_)
+    # Save data structure to different file.
+    outfile_ = '~data2.json'
+    with open(outfile_,'w') as f:
+        f.write(json.dumps(data_,indent=2))
+    print('2st stage output saved to',outfile_)
+    # Compare two data structures and 
+    data_compare_flag = data==data_
+    print('\n-----------------------------------')
+    print('----- BACK-LOOP COMPARISON ---------')
+    print('------------------------------------\n')
+    print('data_compare_flag=',data_compare_flag)
+    if not data_compare_flag:
+        print('ERROR: DATA STRUCTURES ARE NOT SAME, CHECK (%s,%s)',(outfile,outfile_))
+    # Create a summary collection.
+    col = Collection()
+    col.update([{'data_compare_flag':data_compare_flag}])
+    ##################
+    # RETURN RESULTS
+    ##################
+    t = time()-t
+    return t,col
 
 def test0():
     XML = """
@@ -918,6 +1013,87 @@ J step FLOAT
 """
     return do_test(XML,BUFFER)
 
+def test8():
+    XML = """<DICT>
+***** BAND STATISTICS *****
+ iso          band        ref Nlin  Jm  JM  fm      fM       dfm        dfM       mean       rms      uncert
+<FIXCOL name="band_stat">
+//HEADER
+0 iso int
+1 v1 int
+2 v2 int
+3 l2 int
+4 v3 int
+5 r int
+6 v1_ int
+7 v2_ int
+8 l2_ int
+9 v3_ int
+A r_ int
+B ref int
+C Nlin int
+D Jmin int
+E Jmax int
+F Fmin float
+G Fmax float
+H dFmin float
+I dFmax float
+J mean float
+K rms float
+L uncert float
+
+//DATA
+0___1__2_3_4_5_6__7_8_9_A_B___C___D___E___F_______G_______H_________I_________J__________K__________L__________
+<!--
+ iso          band        ref Nlin  Jm  JM  fm      fM       dfm        dfM       mean       rms      uncert
+   1  1 0 0 1 1  0 0 0 0 1   1   9   5  27  3698.0  3733.5  1.33E-05  3.67E-05 -2.401E-05  2.631E-05  3.561E-05
+   1  0 0 0 2 1  1 0 0 1 1   2  35   5  45   917.7   983.5  6.67E-07  6.67E-07 -7.716E-08  2.781E-06  2.782E-06
+   1  0 0 0 2 1  1 0 0 1 2   2  31   5  37  1027.3  1082.8  6.67E-07  6.67E-07 -6.503E-07  3.904E-06  3.958E-06
+   1  0 0 0 1 1  1 0 0 0 1   3  50   3  54   910.0   992.5  1.03E-07  2.13E-07  1.683E-07  2.652E-07  3.141E-07
+   1  0 0 0 1 1  1 0 0 0 2   3  49   1  50  1016.7  1093.9  1.20E-07  1.43E-07  1.847E-07  2.601E-07  3.190E-07
+   1  0 0 0 2 1  1 0 0 1 1   4  40   3  45   917.7   984.5  5.34E-04  5.34E-04 -1.185E-05  7.731E-05  7.821E-05
+   1  0 0 0 2 1  1 0 0 1 2   4  37   4  45  1019.0  1084.9  5.34E-04  5.34E-04  9.188E-06  5.221E-05  5.302E-05
+   1  0 0 0 3 1  1 0 0 2 1   4  16   6  38   922.6   970.6  5.34E-04  5.34E-04  5.236E-04  5.389E-04  7.514E-04
+-->
+</FIXCOL>
+this is ending
+</DICT>
+"""
+    BUFFER = """
+***** BAND STATISTICS *****
+ iso          band        ref Nlin  Jm  JM  fm      fM       dfm        dfM       mean       rms      uncert
+   1  1 0 0 1 1  0 0 0 0 1   1   9   5  27  3698.0  3733.5  1.33E-05  3.67E-05 -2.401E-05  2.631E-05  3.561E-05
+   1  0 0 0 2 1  1 0 0 1 1   2  35   5  45   917.7   983.5  6.67E-07  6.67E-07 -7.716E-08  2.781E-06  2.782E-06
+   1  0 0 0 2 1  1 0 0 1 2   2  31   5  37  1027.3  1082.8  6.67E-07  6.67E-07 -6.503E-07  3.904E-06  3.958E-06
+   1  0 0 0 1 1  1 0 0 0 1   3  50   3  54   910.0   992.5  1.03E-07  2.13E-07  1.683E-07  2.652E-07  3.141E-07
+   1  0 0 0 1 1  1 0 0 0 2   3  49   1  50  1016.7  1093.9  1.20E-07  1.43E-07  1.847E-07  2.601E-07  3.190E-07
+   1  0 0 0 2 1  1 0 0 1 1   4  40   3  45   917.7   984.5  5.34E-04  5.34E-04 -1.185E-05  7.731E-05  7.821E-05
+   1  0 0 0 2 1  1 0 0 1 2   4  37   4  45  1019.0  1084.9  5.34E-04  5.34E-04  9.188E-06  5.221E-05  5.302E-05
+   1  0 0 0 3 1  1 0 0 2 1   4  16   6  38   922.6   970.6  5.34E-04  5.34E-04  5.236E-04  5.389E-04  7.514E-04
+   1  0 0 0 1 1  1 0 0 0 1   5   9  49  63   903.2   997.4  6.67E-08  3.00E-07 -3.848E-07  1.050E-06  1.118E-06
+   1  0 0 0 1 1  1 0 0 0 2   5   3  57  62  1003.2  1007.8  1.00E-07  1.33E-07  8.067E-07  9.991E-07  1.284E-06
+   1  0 1 1 1 1  1 1 1 0 1   5  50   6  44   886.8   953.7  1.33E-07  1.23E-06  5.125E-09  1.613E-06  1.613E-06
+   1  0 1 1 1 1  1 1 1 0 2   5  33   5  49  1026.0  1094.6  1.33E-07  3.00E-07  1.654E-07  1.371E-06  1.381E-06
+   1  0 1 1 1 1  1 1 1 0 1   6  12   8  43   888.5   919.9  2.00E-05  2.00E-05  6.026E-07  1.028E-05  1.030E-05
+   1  0 1 1 1 1  1 1 1 0 1   7  14  10  29   902.2   944.2  6.67E-06  6.67E-06 -2.567E-06  7.047E-06  7.500E-06
+   1  0 0 0 1 1  1 0 0 0 1   8   3  10  14   949.5   969.1  6.67E-09  6.67E-08 -3.034E-08  3.634E-08  4.733E-08
+   1  0 1 1 0 1  0 0 0 0 1   9 112   0  81   610.6   733.0  4.00E-04  2.50E-03  1.201E-04  1.244E-03  1.249E-03
+   1  0 2 2 0 1  0 1 1 0 1   9 116   2  63   626.6   718.5  4.00E-04  1.50E-03  5.440E-05  8.666E-04  8.683E-04
+   1  0 3 3 0 1  0 2 2 0 1   9  53   4  48   635.0   707.3  9.00E-04  9.00E-04  7.158E-06  8.699E-04  8.699E-04
+   1  0 4 4 0 1  0 3 3 0 1   9  36   5  36   641.9   697.6  3.50E-03  3.50E-03  9.896E-04  3.643E-03  3.775E-03
+   1  1 0 0 0 1  0 1 1 0 1   9  81   0  64   676.8   769.2  4.00E-04  4.00E-04 -1.261E-04  5.029E-04  5.184E-04
+   1  1 0 0 0 2  0 1 1 0 1   9  69   0  62   572.9   661.0  4.00E-04  4.00E-04  2.778E-04  5.435E-04  6.104E-04
+   1  1 1 1 0 1  0 2 2 0 1   9  93   2  48   708.5   778.6  4.00E-04  1.20E-03 -3.930E-04  1.189E-03  1.252E-03
+   1  1 1 1 0 1  1 0 0 0 1   9  47   2  50   650.2   727.3  7.00E-04  1.10E-03 -3.535E-04  1.202E-03  1.253E-03
+   1  1 1 1 0 1  1 0 0 0 2   9  49   0  42   758.7   823.4  1.50E-03  1.50E-03 -7.016E-04  1.748E-03  1.884E-03
+   1  1 1 1 0 2  0 2 2 0 1   9  75   1  43   571.4   628.6  8.00E-04  1.10E-03  2.157E-04  1.199E-03  1.218E-03
+   1  1 1 1 0 2  1 0 0 0 2   9  54   0  50   610.3   682.7  6.00E-04  8.00E-04  1.699E-04  7.910E-04  8.091E-04
+   1  0 0 0 1 1  0 0 0 0 1  10  76   0  77  2275.0  2390.5  1.20E-04  1.20E-04  3.223E-05  6.327E-05  7.101E-05
+   1  0 1 1 1 1  0 1 1 0 1  10 119   1  65  2276.7  2374.2  1.20E-04  1.40E-04  2.428E-05  7.900E-05  8.265E-05
+this is ending
+"""
+    return do_test2(XML,BUFFER)
+    
 TEST_CASES = [
     test0,
     test1,
@@ -928,16 +1104,29 @@ TEST_CASES = [
     test5,
     test6,
     test7,
+    test8,
 ]
 
-def do_tests(TEST_CASES,testgroup=None,session_name=None): # test all functions    
+def get_test_cases():
+    args = sys.argv[1:]
+    if not args:
+        return TEST_CASES
+    test_cases = []
+    for arg in args:
+        test_cases.append(eval(arg))
+    return test_cases
+
+def do_tests(test_cases=None,testgroup=None,session_name=None): # test all functions    
+    
+    if not test_cases:
+        test_cases = get_test_cases()
 
     if testgroup is None:
         testgroup = __file__
 
     session_uuid = uuid()
     
-    for test_fun in TEST_CASES:        
+    for test_fun in test_cases:        
         runtest(test_fun,testgroup,session_name,session_uuid,save=True)
         
 if __name__=='__main__':
@@ -947,5 +1136,5 @@ if __name__=='__main__':
     except IndexError:
         session_name = '__not_supplied__'
         
-    do_tests(TEST_CASES,session_name=session_name)
+    do_tests(test_cases=None,session_name=session_name)
     
