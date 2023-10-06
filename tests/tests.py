@@ -1,9 +1,10 @@
+import sys
 from time import time
 from jeanny3 import Collection, uuid
 
 from freeparse import ET, ParsingTree
 
-from .unittests import runtest 
+from unittests import runtest 
 
 def do_test(XML,BUFFER):
     t = time()
@@ -70,7 +71,7 @@ b1=0.5 b2=0.000001
 a1=20.0 a2=-1
 b1=-0.5 b2=-300
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test1():
     XML = """
@@ -81,7 +82,7 @@ def test1():
 
         <LOOP name="inner_list">
             <DICT name="dict_inner">
-                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> Jrank=<INT name="Jrank"/> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><OPTIONAL><EOL/></OPTIONAL>
+                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> Jrank=<INT name="Jrank"/> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><EOL/>
             </DICT>
         </LOOP>
 
@@ -99,7 +100,7 @@ iter= 5 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 iter= 6 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 iter= 7 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test1a():
     XML = """
@@ -122,7 +123,7 @@ iter= 2 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 a=3000
 iter= 3 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test2():
     XML = """
@@ -141,7 +142,7 @@ number of the computed nonzero singular value 144
 number of the computed singular values that are larger than the underflow threshold 144
 number of sweeps of Jacobi rotations needed for numerical convergence      11
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test3():
     XML = """<DICT>
@@ -159,7 +160,7 @@ number of sweeps of Jacobi rotations needed for numerical convergence <INT name=
         Fnorm= <FLOAT name="Fnorm"/> xi= <FLOAT name="xi"/> rms= <FLOAT name="rms"/><EOL/>        
         <LOOP name="inner_list">
             <DICT>
-                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> Jrank=<INT name="Jrank"/> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><OPTIONAL><EOL/></OPTIONAL>
+                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> Jrank=<INT name="Jrank"/> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><EOL/>
             </DICT>
         </LOOP>
     </DICT>   
@@ -657,7 +658,7 @@ cooks:            12
               Cumulative Probability
 
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test4():
     XML = """
@@ -669,7 +670,7 @@ def test4():
 
         <LOOP name="inner_list">
             <DICT name="dict_inner">
-                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> <OPTIONAL>Jrank=<INT name="Jrank"/></OPTIONAL> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><OPTIONAL><EOL/></OPTIONAL>
+                iter= <INT name="iter"/> Nfun= <INT name="Nfun"/> <OPTIONAL>Jrank=<INT name="Jrank"/></OPTIONAL> scgrad= <FLOAT name="scgrad"/> scstep= <FLOAT name="scstep"/><EOL/>
             </DICT>
         </LOOP>
 
@@ -683,7 +684,7 @@ a=1 b=2
 iter= 1 Nfun= 2 Jrank=144 scgrad=  0.2E+05 scstep=  0.4E-04
 iter= 2 Nfun= 3           scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test5():
     XML = """
@@ -761,7 +762,7 @@ RMS(mK)                                    1.83
 
 
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 def test6():
     XML = """
@@ -840,18 +841,15 @@ def test6():
               Cumulative Probability
 
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
-def test6():
+def test7():
     XML = """<DICT>
 
     Name          Parameter             Estimate         Error    Sensit.   Est/Err Inflat.  Weight Tags  Gradient    Step
 ---------- R--M1-M2-M3-D--1--2--3--L--J- ---------------- --------  -------  -------- ------- ------- ----  --------    ----
 
-<LOOP name="WTF">
-<EOL/>
-<LEAVEWHITESPACE>
-<FIXCOL>
+<FIXCOL name="WTF">
 //HEADER
 0 name STR
 1 R INT
@@ -859,9 +857,9 @@ def test6():
 3 M2 INT
 4 M3 INT
 5 D INT
-6 1 INT
-7 2 INT
-8 3 INT
+6 a1 INT
+7 a2 INT
+8 a3 INT
 9 L INT
 A J FLOAT
 B estimate FLOAT
@@ -884,8 +882,6 @@ J step FLOAT
  W11122    0  0  0  0  0  3  2  0  0  0 -0.1701685787E-05 0.43E-05 0.45E-11   0.4E+00 ******* 0.60E-04 T  0.85E+07 -0.17E-05
 -->
 </FIXCOL>
-</LEAVEWHITESPACE>
-</LOOP>
 
 </DICT>
 """
@@ -920,7 +916,7 @@ J step FLOAT
  W22222    0  0  0  0  0  0  5  0  0  0 -0.8897081454E-08 0.11E-06 0.13E-12   0.8E-01 ******* 0.35E-02 T -0.16E+10 -0.89E-08
 
 """
-    do_test(XML,BUFFER)
+    return do_test(XML,BUFFER)
 
 TEST_CASES = [
     test0,
@@ -931,6 +927,7 @@ TEST_CASES = [
     test3,
     test5,
     test6,
+    test7,
 ]
 
 def do_tests(TEST_CASES,testgroup=None,session_name=None): # test all functions    
