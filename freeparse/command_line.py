@@ -63,7 +63,7 @@ def main():
         grammar_flag = True
     
     # Set the verbosity level.
-    VARSPACE['DEBUG'] = args.verbose
+    VARSPACE['VERBOSE'] = args.verbose
 
     #print('args.diagram>>>',args.diagram,type(args.diagram))
 
