@@ -20,16 +20,60 @@ EOL = LineEnd()
 EMPTY = Empty()
 
 VARSPACE = {
-    'DEBUG': False
+    'VERBOSE': False
 }
 
 def _print(*args):
-    if VARSPACE['DEBUG']: print(*args)
+    if VARSPACE['VERBOSE']: print(*args)
 
 class GenerationError(Exception):
     "Raised when the raw file generation has been failed"
     pass
+
+class DataIterator():
     
+    def __init__(self,data):
+        self.__data__ = data
+        self.__datatype__ = type(data)
+        self.__vars__ = {}
+        self.__vars__['isempty'] = False        
+        if self.__datatype__ in {list,tuple}:
+            self.__vars__['index'] = 0
+        elif self.__datatype__ in {dict}:
+            self.__vars__['allkeys'] = set(data.keys())
+            self.__vars__['usedkeys'] = set()
+            #self.__index__ = None
+        
+    def next(self,key=None):
+        if self.__datatype__ in {list,tuple}:
+            self.__vars__['index'] += 1
+            if self.__vars__['index']>=len(self.__data__):
+                self.__vars__['isempty'] = True
+                _print('DataIterator.next>>>EMPTY LIST!')
+            return self.__data__[self.__vars__['index']-1]
+        elif self.__datatype__ in {dict}:
+            self.__vars__['usedkeys'].add(key)
+            if not self.__vars__['allkeys'] - self.__vars__['usedkeys']:
+                self.__vars__['isempty'] = True
+                _print('DataIterator.next>>>EMPTY DICT!')
+            return self.__data__[key]
+        else:
+            raise Exception('unknown type for DataIterator: "%s"'%self.__datatype__)
+            
+    def is_empty(self):
+        return self.__vars__['isempty']
+        
+    def copy(self):
+        obj = DataIterator(self.__data__)
+        obj.__vars__ = deepcopy(self.__vars__)
+        return obj
+        
+    def getall(self):
+        return self.__data__
+        
+    def __repr__(self):
+        return 'DataIterator(type=%s,index=%s)'%(self.__datatype__,self.__vars__.get('index'))
+
 class Buffer:
     
     def __init__(self):
@@ -40,6 +84,15 @@ class Buffer:
     
     def flush_data(self):
         raise NotImplementedError
+        
+    def clear(self):
+        buf = self.__buffer__
+        if type(buf) in {list,dict}:
+            buf.clear()
+        elif type(buf) is type(None):
+            pass
+        else:
+            raise Exception('Buffer.clear: Unknown buffer type "%s"'%type(buf))
         
     def relocate_buffer(self,key,external_buffer):
         external_data = external_buffer.flush_data()
@@ -99,15 +152,32 @@ def sum_grammars(*grammars):
     grammar = reduce(lambda x,y: x+y,gg) if gg else None
     return grammar
 
-def process_text(txt):
+def process_text(txt): # for initialize tag
     if not txt: return txt
     if txt[0]=='\n': return txt[1:]
     return txt
 
-def process_tail(txt):
+def process_tail(txt): # for initialize tag
     if not txt: return txt
     if txt[0]=='\n': return txt[1:]
     return txt
+
+def remove_leading_eol(txt): # for generate_ method of ParsingTree
+    if not txt: return txt
+    if txt[0]=='\n': return txt[1:]
+    return txt
+
+def process_text_(txt): # for generate_ method of ParsingTree
+    if not txt: return txt
+    lines = txt.split('\n')
+    lines = [line.lstrip() for line in lines]
+    txt = '\n'.join(lines)
+    return txt
+
+def split_list(lst,separator):
+    from itertools import groupby
+    chunks = [list(g) for k,g in groupby(lst, key=lambda x: x != separator) if k]
+    return chunks
 
 class ParsingTree:
     
@@ -195,28 +265,116 @@ class ParsingTree:
         return grammar_body,grammar_tail
         
     def generate(self,data):
+        dataiter = DataIterator(data)
+        buf = self.generate_(dataiter)
+        #return buf
+        #print('GENERATE:')
+        #print(buf)
+        buf = [s for s in buf if s]
+        buf = split_list(buf,'\n')
+        lines = [' '.join(b) for b in buf]
+        return '\n'.join(lines)
+    
+    def generate_(self,dataiter):
         """
         Tries to generate a "raw" file from data structure using stored format.
         This is needed to have a full cycle "parse->analyze->substitute->generate".
         """
+        _print('-------------------------- generate_ --------------------------')
+        _print('ParsingTree.generate_>>>self.__tag__',self.__tag__)
+        _print('ParsingTree.generate_>>>self.__varname__',self.__varname__)
+        _print('ParsingTree.generate_>>>dataiter',dataiter)
+        _print('ParsingTree.generate_>>>dataiter.getall()',dataiter.getall())
+        _print('---------------------------------------------------------------')
         
-        #_print('ParsingTree.generate>>>data',data)
+        #buf = ''
+        buf = []
         
-        buf = ''
+        #if self.__text__: buf += self.__text__
+        #if self.__text__: _print('ParsingTree.generate_>>>self.__text__',self.__text__)
         
-        if self.__text__: buf += self.__text__
-        if self.__text__: _print('ParsingTree.generate>>>self.__text__',self.__text__)
+        # generate buffer for vale-type tags
+        try:
+            selfbuf = self.genval(dataiter) # -> if tag=FLOAT, STR, INT etc...
+            _print('ParsingTree.generate_>>>selfbuf',selfbuf)
+            #buf += selfbuf
+            buf.append(selfbuf)
+        except GenerationError:
+            self.handle_generation_error()
+        # TODO!!!: in fixcol: rename generate to whatever name is used
         
-        data_generator = self.get_data_generator(data)
+        # loop for children, for value-type tags this should be empty
         
-        for el,subdata in data_generator:
-            buf += el.generate(subdata)
+        #for el in cycle(self.__children__): # MIND LOOP!!!
         
-        if self.__tail__: buf += self.__tail__
-        if self.__tail__: _print('ParsingTree.generate>>>self.__text__',self.__tail__)
+        #children_tags_iter = cycle(self.__children__)
+        #while not dataiter.is_empty() and self.__children__:
+        #    el = next(children_tags_iter)
+        #    _print('ParsingTree.generate_>>>cycle>>el.__tag__',el.__tag__)
+        #    _print('ParsingTree.generate_>>>cycle>>el.__varname__',el.__varname__)
+        #    _print('ParsingTree.generate_>>>cycle>>dataiter',dataiter)
+        #    _print('ParsingTree.generate_>>>cycle>>dataiter.getall()',dataiter.getall())
+        #    dataiter_child = el.dataiter_next(dataiter)
+        #    #if not dataiter_child: continue
+        #    try:
+        #        elbuf = el.generate_(dataiter_child.copy())
+        #        _print('ParsingTree.generate_>>>cycle>>try>>dataiter',dataiter)
+        #        _print('ParsingTree.generate_>>>cycle>>try>>elbuf',elbuf)
+        #        buf += elbuf
+        #        #if dataiter.is_empty(): break
+        #    except GenerationError:
+        #        # do something if failed to generate from children (important for "optional" tag)
+        #        el.handle_generation_error()
+
+        while self.__children__:
+
+            if dataiter.is_empty(): break
+            
+            if self.__text__: 
+                text = remove_leading_eol(self.__text__)
+                text = process_text_(text)
+                #buf += text
+                buf.append(text)
+                #buf += self.__text__
+            if self.__text__: _print('ParsingTree.generate_>>>cycle>>>self.__text__',self.__text__)
+                                    
+            for el in self.__children__:
+                
+                _print('ParsingTree.generate_>>>cycle>>el.__tag__',el.__tag__)
+                _print('ParsingTree.generate_>>>cycle>>el.__varname__',el.__varname__)
+                _print('ParsingTree.generate_>>>cycle>>dataiter',dataiter)
+                _print('ParsingTree.generate_>>>cycle>>dataiter.getall()',dataiter.getall())
+                
+                dataiter_child = el.dataiter_next(dataiter)
+                #if not dataiter_child: continue
+                try:
+                    elbuf = el.generate_(dataiter_child.copy())
+                    _print('ParsingTree.generate_>>>cycle>>try>>dataiter',dataiter)
+                    _print('ParsingTree.generate_>>>cycle>>try>>elbuf',elbuf)
+                    buf += elbuf
+                    #if dataiter.is_empty(): break
+                except GenerationError:
+                    # do something if failed to generate from children (important for "optional" tag)
+                    el.handle_generation_error()
         
-        return buf        
+        if self.__tail__: 
+            tail = process_text_(self.__tail__)
+            #buf += tail
+            buf.append(tail)
+            #buf += self.__tail__
+        if self.__tail__: _print('ParsingTree.generate_>>>self.__tail__',self.__tail__)
+                
+        return buf
         
+    def dataiter_next(self,dataiter):
+        obj = dataiter.next(self.__varname__)
+        _print('%s.dataiter_next>>>tag'%self.__class__.__name__,self.__tag__)
+        _print('%s.dataiter_next>>>dataiter(before)'%self.__class__.__name__,dataiter)
+        dataiter_child = DataIterator(obj)
+        _print('%s.dataiter_child.getall()>>>dataiter(after)'%self.__class__.__name__,dataiter_child.getall())
+        _print('%s.dataiter_next>>>dataiter(after)'%self.__class__.__name__,dataiter)
+        return dataiter_child
+                
     def print_tree(self,level=0,show_buffer=False):
         print('\n'+("=="*level),self.__tag__,self.__varname__)
         if show_buffer:
@@ -225,7 +383,13 @@ class ParsingTree:
             child.print_tree(level=level+1,show_buffer=show_buffer)
                         
     def insert_to_buffer(self,key,value):
-        self.__buffer__.insert(key,value)       
+        self.__buffer__.insert(key,value)
+        
+    def clear_buffer(self):
+        """ recursively clear the buffer """
+        self.__buffer__.clear()
+        for el in self.__children__:
+            el.clear_buffer()
         
     def get_data(self):
         return self.__buffer__.__buffer__
@@ -240,6 +404,7 @@ class ParsingTree:
         self.__grammar__ = self.getGrammar()
         
     def parse_string(self,buf):
+        self.clear_buffer()
         self.grammar.parse_string(buf)
         
     def parse_file(self,fileobj,encoding='utf-8'):
@@ -262,8 +427,12 @@ class ParsingTree:
     def post_process(self):
         raise NotImplementedError
         
-    def get_data_generator(self,data):
-        raise NotImplementedError
+    #def get_data_generator(self,data):
+    #    raise NotImplementedError
+    
+    def handle_generation_error(self):
+        _print('%s.handle_generation_error'%self.__class__.__name__)
+        raise GenerationError
         
 class ParsingTreeValue(ParsingTree):    
     """
@@ -315,18 +484,42 @@ class ParsingTreeValue(ParsingTree):
         
         return grammar
         
-    def generate(self,data):
-        # Do a common type comparison check.
+    #def generate(self,data):
+    #    _print('ParsingTreeValue.generate>>>tag',self.__tag__)
+    #    _print('ParsingTreeValue.generate>>>data',data)
+    #    # Do a common type comparison check.
+    #    self_type = self.get_type()
+    #    data_type = type(data)
+    #    _print('ParsingTreeValue.generate>>>data_type',data_type)
+    #    if self_type!=data_type:
+    #        raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
+    #    # Do a type-specific check.
+    #    self.check_data(data) 
+    #    buf = str(data)
+    #    _print('ParsingTreeValue.generate>>>buf=data',buf)
+    #    if self.__tail__: 
+    #        buf += process_tail(self.__tail__)
+    #    _print('ParsingTreeValue.generate>>>buf=data+tail',buf)
+    #    return buf
+    
+    def genval(self,dataiter):
+        data = dataiter.getall()
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        _print('%s.genval>>>data'%self.__class__.__name__,data)
         self_type = self.get_type()
         data_type = type(data)
+        _print('%s.genval>>>data_type'%self.__class__.__name__,data_type)
         if self_type!=data_type:
             raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
         # Do a type-specific check.
-        self.check_data(data) 
-        buf = str(data)
-        if self.__tail__: 
-            buf += process_tail(self.__tail__)
+        self.check_data(data)
+        #buf = str(data)
+        buf = self.to_str(data)
+        _print('%s.genval>>>buf'%self.__class__.__name__,buf)
         return buf
+        
+    def to_str(self,data):
+        return str(data)
         
     def check_data(self,data):
         pass
@@ -384,7 +577,7 @@ class TreeWORD(ParsingTreeValue):
 
     def check_data(self,data):
         inp = self.__xmlroot__.get('input')
-        if set(data) not in set(inp):
+        if not set(data).issubset(inp):
             raise GenerationError('"%s" is not a word of "%s" for %s'%(data,inp,self.__tag__))
 
 class TreeRESTOFLINE(ParsingTreeValue):
@@ -394,6 +587,11 @@ class TreeRESTOFLINE(ParsingTreeValue):
     
     def get_type(self):
         return str
+     
+    def to_str(self,data): # rest of line takes extra space when generated back to string buffer
+        if data and data[0]==' ':
+            return data[1:]
+        return data
 
 class TreeREGEX(ParsingTreeValue):
 
@@ -476,6 +674,18 @@ class ParsingTreeContainer(ParsingTree):
 
         return grammar
 
+    def genval(self,dataiter):
+        data = dataiter.getall()
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        #_print('%s.genval>>>data'%self.__class__.__name__,data)
+        self_type = self.get_type()
+        data_type = type(data)
+        _print('%s.genval>>>data_type'%self.__class__.__name__,data_type)
+        if self_type!=data_type:
+            raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
+        buf = ''
+        return buf
+        
 class TreeDICT(ParsingTreeContainer):
     """ Dictionary """
     
@@ -485,11 +695,21 @@ class TreeDICT(ParsingTreeContainer):
 
     def process(self,grammar_body,grammar_tail):
         return sum_grammars(grammar_body,grammar_tail)
+
+    def get_type(self):
+        return dict
         
-    def get_data_generator(self,data):
-        for el in self.__children__:
-            key = el.__xmlroot__.get('name')
-            yield el,data[key]
+    #def get_data_generator(self,data):
+    #    for el in self.__children__:
+    #        key = el.__xmlroot__.get('name')
+    #        _print('TreeDICT.get_data_generator>>>el.__tag__',el.__tag__)
+    #        _print('TreeDICT.get_data_generator>>>key',key) 
+    #        #if key not in data: continue
+    #        #data_next = data[key]
+    #        data_next = data.get(key)
+    #        _print('TreeDICT.get_data_generator>>>data_next',data_next) 
+    #        _print('TreeDICT.get_data_generator>>>data_next==None',data_next==None) 
+    #        yield el,data_next
 
 class TreeLIST(ParsingTreeContainer):
     """ Static list """
@@ -503,10 +723,15 @@ class TreeLIST(ParsingTreeContainer):
         
     def get_data_generator(self,data):
         raise NotImplementedError    
-    
-    def get_data_generator(self,data):
-        for el,datum in zip(self.__children__,data):            
-            yield el,datum
+
+    def get_type(self):
+        return list
+
+    #def get_data_generator(self,data):
+    #    for el,datum in zip(self.__children__,data):    
+    #        _print('TreeLIST.get_data_generator>>>el.__tag__',el.__tag__)
+    #        _print('TreeLIST.get_data_generator>>>datum',datum)
+    #        yield el,datum
     
 class TreeLOOP(ParsingTreeContainer):
     """ Dynamic list, zero or more repetitions """
@@ -518,10 +743,15 @@ class TreeLOOP(ParsingTreeContainer):
     def process(self,grammar_body,grammar_tail):
         grammar_body = ZeroOrMore(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
+
+    def get_type(self):
+        return list
         
-    def get_data_generator(self,data):        
-        for el,datum in zip(cycle(self.__children__),data):
-            yield el,datum
+    #def get_data_generator(self,data):        
+    #    for el,datum in zip(cycle(self.__children__),data):
+    #        _print('TreeLOOP.get_data_generator>>>el._tag__',el.__tag__)
+    #        _print('TreeLOOP.get_data_generator>>>datum',datum)
+    #        yield el,datum
 
 class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (needs some refactoring!)
     """
@@ -695,7 +925,10 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
     def process(self,grammar_body,grammar_tail):
         return sum_grammars(grammar_body,grammar_tail)
         
-    def generate(self,data):
+    #def generate(self,data):
+    def genval(self,dataiter):
+        
+        data = dataiter.getall()
         
         TYPES = self.__types__
         HEAD = self.__head__
@@ -742,12 +975,27 @@ class ParsingTreeAux(ParsingTree):
         grammar = self.process(grammar_body,grammar_tail)
         _print('ParsingTreeAux.getGrammar>>>grammar',grammar)
         return grammar
+        
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        buf = ''
+        return buf
+        
+    def dataiter_next(self,dataiter):
+        #_print('%s.dataiter_next>>>tag'%self.__class__.__name__,self.__tag__,'(SKIPPING)')
+        _print('%s.dataiter_next>>>tag'%self.__class__.__name__,self.__tag__,'(UNCHANGED)')
+        #return None
+        return dataiter        
 
 class TreeOPTIONAL(ParsingTreeAux):
     
     def process(self,grammar_body,grammar_tail):
         grammar_body = Optional(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
+        
+    def handle_generation_error(self):
+        _print('TreeOPTIONAL.handle_generation_error')
+        pass
 
 class TreeEOL(ParsingTreeAux):
 
@@ -761,6 +1009,19 @@ class TreeEOL(ParsingTreeAux):
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
         return grammar
+
+    #def generate(self,data):
+    #    # Do a common type comparison check.
+    #    buf = '\n'
+    #    tail = process_tail(self.__tail__) if self.__tail__ else ''
+    #    buf += tail
+    #    _print('TreeEOL.generate>>>tail',tail)
+    #    return buf
+    
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        buf = '\n'
+        return buf
 
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
     
