@@ -664,6 +664,8 @@ class ParsingTreeContainer(ParsingTree):
                 _print('============================')
                 parent.__buffer__.relocate_buffer(key,buf)
             
+            grammar = Group(grammar)
+            
             grammar.setParseAction(lambda tokens: move_to_parent(self))
                 
         _print('ParsingTreeContainer.getGrammar>>>self.__tag__',self.__tag__)
