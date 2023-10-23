@@ -51,6 +51,10 @@ def main():
     parser.add_argument('--verbose', dest='verbose',
         action='store_const', const=True, default=False,
         help='Verbose flag (useful for debugging, optional)')
+
+    parser.add_argument('--breakpoints', dest='breakpoints',
+        action='store_const', const=True, default=False,
+        help='Turn on breakpoints (useful for debugging, optional)')
         
     args = parser.parse_args() 
         
@@ -64,6 +68,9 @@ def main():
     
     # Set the verbosity level.
     VARSPACE['VERBOSE'] = args.verbose
+
+    # Set the breakpoints.
+    VARSPACE['BREAKPOINTS'] = args.breakpoints
 
     #print('args.diagram>>>',args.diagram,type(args.diagram))
 
