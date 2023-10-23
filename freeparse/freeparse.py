@@ -20,7 +20,8 @@ EOL = LineEnd()
 EMPTY = Empty()
 
 VARSPACE = {
-    'VERBOSE': False
+    'VERBOSE': False,
+    'BREAKPOINTS': False,
 }
 
 def _print(*args):
@@ -280,6 +281,10 @@ class ParsingTree:
         Tries to generate a "raw" file from data structure using stored format.
         This is needed to have a full cycle "parse->analyze->substitute->generate".
         """
+        
+        _print('breakpoint ParsingTree.generate_>>>BEGIN:')
+        if VARSPACE['BREAKPOINTS']: breakpoint()
+        
         _print('-------------------------- generate_ --------------------------')
         _print('ParsingTree.generate_>>>self.__tag__',self.__tag__)
         _print('ParsingTree.generate_>>>self.__varname__',self.__varname__)
@@ -295,40 +300,27 @@ class ParsingTree:
         
         # generate buffer for vale-type tags
         try:
+            
+            _print('breakpoint ParsingTree.generate_>>>try>>>1:')
+            if VARSPACE['BREAKPOINTS']: breakpoint()
+            
             selfbuf = self.genval(dataiter) # -> if tag=FLOAT, STR, INT etc...
             _print('ParsingTree.generate_>>>selfbuf',selfbuf)
             #buf += selfbuf
             buf.append(selfbuf)
         except GenerationError:
+            
+            _print('breakpoint ParsingTree.generate_>>>except>>>1:')
+            if VARSPACE['BREAKPOINTS']: breakpoint()
+            
             self.handle_generation_error()
-        # TODO!!!: in fixcol: rename generate to whatever name is used
-        
-        # loop for children, for value-type tags this should be empty
-        
-        #for el in cycle(self.__children__): # MIND LOOP!!!
-        
-        #children_tags_iter = cycle(self.__children__)
-        #while not dataiter.is_empty() and self.__children__:
-        #    el = next(children_tags_iter)
-        #    _print('ParsingTree.generate_>>>cycle>>el.__tag__',el.__tag__)
-        #    _print('ParsingTree.generate_>>>cycle>>el.__varname__',el.__varname__)
-        #    _print('ParsingTree.generate_>>>cycle>>dataiter',dataiter)
-        #    _print('ParsingTree.generate_>>>cycle>>dataiter.getall()',dataiter.getall())
-        #    dataiter_child = el.dataiter_next(dataiter)
-        #    #if not dataiter_child: continue
-        #    try:
-        #        elbuf = el.generate_(dataiter_child.copy())
-        #        _print('ParsingTree.generate_>>>cycle>>try>>dataiter',dataiter)
-        #        _print('ParsingTree.generate_>>>cycle>>try>>elbuf',elbuf)
-        #        buf += elbuf
-        #        #if dataiter.is_empty(): break
-        #    except GenerationError:
-        #        # do something if failed to generate from children (important for "optional" tag)
-        #        el.handle_generation_error()
-
+            
         while self.__children__:
+            
+            _print('breakpoint ParsingTree.generate_>>>while>>>1:')
+            if VARSPACE['BREAKPOINTS']: breakpoint()
 
-            if dataiter.is_empty(): break
+            #if dataiter.is_empty(): break
             
             if self.__text__: 
                 text = remove_leading_eol(self.__text__)
@@ -336,35 +328,63 @@ class ParsingTree:
                 #buf += text
                 buf.append(text)
                 #buf += self.__text__
-            if self.__text__: _print('ParsingTree.generate_>>>cycle>>>self.__text__',self.__text__)
-                                    
+            
+            if self.__text__: _print('ParsingTree.generate_>>>while>>>self.__text__',self.__text__)
+                                                            
             for el in self.__children__:
                 
-                _print('ParsingTree.generate_>>>cycle>>el.__tag__',el.__tag__)
-                _print('ParsingTree.generate_>>>cycle>>el.__varname__',el.__varname__)
-                _print('ParsingTree.generate_>>>cycle>>dataiter',dataiter)
-                _print('ParsingTree.generate_>>>cycle>>dataiter.getall()',dataiter.getall())
+                _print('breakpoint ParsingTree.generate_>>>while>>>for>>>1:')
+                if VARSPACE['BREAKPOINTS']: breakpoint()
+                
+                _print('ParsingTree.generate_>>>while>>>for>>el.__tag__',el.__tag__)
+                _print('ParsingTree.generate_>>>while>>>for>>el.__varname__',el.__varname__)
+                _print('ParsingTree.generate_>>>while>>>for>>dataiter',dataiter)
+                _print('ParsingTree.generate_>>>while>>>for>>dataiter.getall()',dataiter.getall())
                 
                 dataiter_child = el.dataiter_next(dataiter)
+                                        
+                _print('ParsingTree.generate_>>>while>>>for>>dataiter_child.getall()',dataiter_child.getall())
                 #if not dataiter_child: continue
                 try:
-                    elbuf = el.generate_(dataiter_child.copy())
-                    _print('ParsingTree.generate_>>>cycle>>try>>dataiter',dataiter)
-                    _print('ParsingTree.generate_>>>cycle>>try>>elbuf',elbuf)
+                    
+                    _print('breakpoint ParsingTree.generate_>>>while>>>for>>>try>>>1:')
+                    if VARSPACE['BREAKPOINTS']: breakpoint()
+                    
+                    #elbuf = el.generate_(dataiter_child.copy()) #????
+                    elbuf = el.generate_(dataiter_child) #????
+                    _print('ParsingTree.generate_>>>while>>>for>>try>>dataiter',dataiter)
+                    _print('ParsingTree.generate_>>>while>>>for>>try>>elbuf',elbuf)
                     buf += elbuf
                     #if dataiter.is_empty(): break
-                except GenerationError:
+                except (GenerationError, KeyError):
                     # do something if failed to generate from children (important for "optional" tag)
+                    _print('breakpoint ParsingTree.generate_>>>while>>>for>>>except>>>1:')
+                    if VARSPACE['BREAKPOINTS']: breakpoint()
                     el.handle_generation_error()
+
+                if el.__tail__: 
+                    tail = process_text_(el.__tail__)
+                    #buf += tail
+                    buf.append(tail)
+                    #buf += el.__tail__
+                if el.__tail__: _print('ParsingTree.generate_>>>while>>>for>>>el.__tail__',el.__tail__)
+                    
+            if self.__stop_criteria__(dataiter): break # stopping criteria for each tag
         
-        if self.__tail__: 
-            tail = process_text_(self.__tail__)
-            #buf += tail
-            buf.append(tail)
-            #buf += self.__tail__
-        if self.__tail__: _print('ParsingTree.generate_>>>self.__tail__',self.__tail__)
-                
+        #if self.__tail__: 
+        #    tail = process_text_(self.__tail__)
+        #    #buf += tail
+        #    buf.append(tail)
+        #    #buf += self.__tail__
+        #if self.__tail__: _print('ParsingTree.generate_>>>self.__tail__',self.__tail__)
+        
+        _print('breakpoint ParsingTree.generate_>>>END:')
+        if VARSPACE['BREAKPOINTS']: breakpoint()
+        
         return buf
+        
+    def __stop_criteria__(self,dataiter):
+        return True
         
     def dataiter_next(self,dataiter):
         obj = dataiter.next(self.__varname__)
@@ -664,7 +684,7 @@ class ParsingTreeContainer(ParsingTree):
                 _print('============================')
                 parent.__buffer__.relocate_buffer(key,buf)
             
-            grammar = Group(grammar)
+            grammar = Group(grammar) # without this nested structures work badly
             
             grammar.setParseAction(lambda tokens: move_to_parent(self))
                 
@@ -748,6 +768,10 @@ class TreeLOOP(ParsingTreeContainer):
 
     def get_type(self):
         return list
+        
+    def __stop_criteria__(self,dataiter): # exclusive stopping criteria for loop
+        if dataiter.is_empty(): return True
+        return False
         
     #def get_data_generator(self,data):        
     #    for el,datum in zip(cycle(self.__children__),data):
