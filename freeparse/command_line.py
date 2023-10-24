@@ -55,6 +55,10 @@ def main():
     parser.add_argument('--breakpoints', dest='breakpoints',
         action='store_const', const=True, default=False,
         help='Turn on breakpoints (useful for debugging, optional)')
+
+    parser.add_argument('--debug', dest='debug',
+        action='store_const', const=True, default=False,
+        help='Turn on grammar debug (ATTENTION: very space-demanding!!!)')
         
     args = parser.parse_args() 
         
@@ -71,6 +75,9 @@ def main():
 
     # Set the breakpoints.
     VARSPACE['BREAKPOINTS'] = args.breakpoints
+
+    # Set the debug mode.
+    VARSPACE['DEBUG'] = args.debug
 
     #print('args.diagram>>>',args.diagram,type(args.diagram))
 

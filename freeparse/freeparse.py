@@ -22,6 +22,7 @@ EMPTY = Empty()
 VARSPACE = {
     'VERBOSE': False,
     'BREAKPOINTS': False,
+    'DEBUG': False,
 }
 
 def _print(*args):
@@ -502,6 +503,8 @@ class ParsingTreeValue(ParsingTree):
         
         grammar = self.post_process(grammar)
         
+        if VARSPACE['DEBUG'] and grammar: grammar.set_debug()
+        
         return grammar
         
     #def generate(self,data):
@@ -694,6 +697,8 @@ class ParsingTreeContainer(ParsingTree):
             _print('ParsingTreeContainer.getGrammar>>>self.__parent__.__tag__',self.__parent__.__tag__)
         _print('ParsingTreeContainer.getGrammar>>>grammar',grammar)
 
+        if VARSPACE['DEBUG'] and grammar: grammar.set_debug()
+
         return grammar
 
     def genval(self,dataiter):
@@ -821,6 +826,8 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             _print('ParsingTreeFIXCOL.getGrammar>>>self.__parent__.__tag__',self.__parent__.__tag__)
         _print('ParsingTreeFIXCOL.getGrammar>>>grammar',grammar)
 
+        if VARSPACE['DEBUG'] and grammar: grammar.set_debug()
+
         return grammar
         
     def collect_grammar_fixcol(self):
@@ -920,6 +927,8 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         grammar_body.setParseAction(add_to_buffer)
         _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
         
+        if VARSPACE['DEBUG'] and grammar: grammar_body.set_debug()
+        
         # combine grammar body to weed out extra spaces
         #grammar_body = Combine(grammar_body) 
         #_print('collect_grammar_fixcol>>>Combine(grammar_body)',grammar_body)
@@ -945,6 +954,8 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         # save for using in generate
         self.__types__ = TYPES
         self.__head__ = HEAD
+                        
+        if VARSPACE['DEBUG'] and grammar: grammar_body.set_debug()
                         
         return grammar_body,grammar_tail        
 
@@ -997,9 +1008,13 @@ class ParsingTreeAux(ParsingTree):
         return BufferStub()
 
     def getGrammar(self):                
+        
         grammar_body,grammar_tail = self.collect_grammar_from_children()
         grammar = self.process(grammar_body,grammar_tail)
         _print('ParsingTreeAux.getGrammar>>>grammar',grammar)
+        
+        if VARSPACE['DEBUG'] and grammar: grammar.set_debug()
+        
         return grammar
         
     def genval(self,dataiter):
