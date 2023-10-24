@@ -1,10 +1,12 @@
 import sys
 import json
 
+import argparse
+
 from time import time
 from jeanny3 import Collection, uuid
 
-from freeparse import ET, ParsingTree
+from freeparse import ET, ParsingTree, VARSPACE
 
 from unittests import runtest 
 
@@ -96,7 +98,14 @@ def do_test2(XML,BUFFER):
     outfile = '~data1.json'
     with open(outfile,'w') as f:
         f.write(json.dumps(data,indent=2))
-    print('1st stage output saved to',outfile)
+    print('1st stage data saved to',outfile)
+    print('\n-----------------------------------')
+    print('----- SAVING BUFFER ----------------')
+    print('------------------------------------\n')
+    filebuf = 'buffer1.txt'
+    with open(filebuf,'w') as f:
+        f.write(BUFFER)
+    print('1st stage buffer saved to',filebuf)
     ##############################################################
     # 2ND STEP - GENERATE NEW RAW FILE FROM THE DATA STRUCTURE,
     # PARSE IT AGAIN AND COMPARE THE RESULTING DATA STRUCTURE 
@@ -108,7 +117,14 @@ def do_test2(XML,BUFFER):
     # Generate new raw file from it.
     rawbuf = parse_tree.generate(data)
     print('\n-----------------------------------')
-    print('----- GENERATING NEW BUF------------')
+    print('----- SAVING NEW BUFFER ------------')
+    print('------------------------------------\n')
+    filebuf = 'buffer2.txt'
+    with open(filebuf,'w') as f:
+        f.write(rawbuf)
+    print('1st stage buffer saved to',filebuf)
+    print('\n-----------------------------------')
+    print('----- GENERATING NEW DATA-----------')
     print('------------------------------------\n')
     print(rawbuf)
     print('------------------------------------\n')
@@ -122,15 +138,23 @@ def do_test2(XML,BUFFER):
     outfile_ = '~data2.json'
     with open(outfile_,'w') as f:
         f.write(json.dumps(data_,indent=2))
-    print('2st stage output saved to',outfile_)
+    print('2st stage data saved to',outfile_)
     # Compare two data structures and 
     data_compare_flag = data==data_
+    print('\n-----------------------------------')
+    print('----- DATA #1 ----------------------')
+    print('------------------------------------\n')
+    print(json.dumps(data,indent=3))
+    print('\n-----------------------------------')
+    print('----- DATA #2 ----------------------')
+    print('------------------------------------\n')
+    print(json.dumps(data_,indent=3))
     print('\n-----------------------------------')
     print('----- BACK-LOOP COMPARISON ---------')
     print('------------------------------------\n')
     print('data_compare_flag=',data_compare_flag)
     if not data_compare_flag:
-        print('ERROR: DATA STRUCTURES ARE NOT SAME, CHECK (%s,%s)',(outfile,outfile_))
+        print('ERROR: DATA STRUCTURES ARE NOT SAME, CHECK %s, %s'%(outfile,outfile_))
     # Create a summary collection.
     col = Collection()
     col.update([{'data_compare_flag':data_compare_flag}])
@@ -139,6 +163,241 @@ def do_test2(XML,BUFFER):
     ##################
     t = time()-t
     return t,col
+
+def test_dict():
+    XML = """
+<DICT>
+    par1=<FLOAT name="par1"/> par2=<FLOAT name="par2"/>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_dict_list_nested():
+    XML = """
+<DICT>
+    <DICT name="dict">
+        <LIST name="list">
+            par1=<FLOAT name="par1"/> par2=<FLOAT name="par2"/> <EOL/>
+        </LIST>
+    </DICT>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_dict_eol():
+    XML = """
+<DICT>
+    par1=<FLOAT name="par1"/> <EOL/>
+    par2=<FLOAT name="par2"/>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 
+par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_dict_nested():
+    XML = """
+<DICT>
+    <DICT name="mydict">
+        par1=<FLOAT name="par1"/> par2=<FLOAT name="par2"/>
+    </DICT>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_list():
+    XML = """
+<LIST>
+    par1=<FLOAT/> par2=<FLOAT/>
+</LIST>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_list_eol():
+    XML = """
+<LIST>
+    par1=<FLOAT/> <EOL/>
+    par2=<FLOAT/>
+</LIST>
+"""
+    BUFFER = """    
+par1=1.0 
+par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_dict_list_eol():
+    XML = """
+<DICT>
+    <LIST name="mylist">
+        par1=<FLOAT/> <EOL/>
+        par2=<FLOAT/>
+    </LIST>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 
+par2=2.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_loop_eol():
+    XML = """
+<LOOP>
+    par1=<FLOAT/> par2=<FLOAT/> <EOL/>
+</LOOP>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+par1=2.0 par2=4.0E-10
+par1=3.0 par2=6.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_loop_eol_nested():
+    XML = """
+<DICT>
+    <LOOP name="inner_loop">
+        par1=<FLOAT/> par2=<FLOAT/> <EOL/>
+    </LOOP>
+</DICT>
+"""
+    BUFFER = """    
+par1=1.0 par2=2.0E-10
+par1=2.0 par2=4.0E-10
+par1=3.0 par2=6.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_loop_dict_eol_nested():
+    XML = """
+<DICT>
+    <LOOP name="inner_loop">
+        a=<INT/> <EOL/>
+        <DICT>
+            par1=<FLOAT name="par1"/> par2=<FLOAT name="par2"/> 
+        </DICT> <EOL/>
+    </LOOP>
+</DICT>
+"""
+    BUFFER = """    
+a=1
+par1=1.0 par2=2.0E-10
+a=2
+par1=2.0 par2=4.0E-10
+a=3
+par1=3.0 par2=6.0E-10
+"""
+    return do_test2(XML,BUFFER)
+
+def test_literal():
+    XML = """
+<DICT>
+    aa=<LITERAL name="aa" input="H"/>
+</DICT>
+"""
+    BUFFER = """    
+aa=H
+"""
+    return do_test2(XML,BUFFER)
+
+def test_word():
+    XML = """
+<DICT>
+    aa=<WORD name="aa" input="HOC"/>
+</DICT>
+"""
+    BUFFER = """    
+aa=HOOOCC
+"""
+    return do_test2(XML,BUFFER)
+
+def test_regex():
+    XML = """
+<DICT>
+    aa=<REGEX name="aa" input="[wat]+[er]+"/>
+</DICT>
+"""
+    BUFFER = """    
+aa=wwweee
+"""
+    return do_test2(XML,BUFFER)
+
+def test_text():
+    XML = """
+<DICT>
+    aa=<TEXT name="aa" begin="ah" end="ha"/>
+</DICT>
+"""
+    BUFFER = """    
+aa=ah0923kjhdkjhsdfha
+"""
+    return do_test2(XML,BUFFER)
+
+def test_restofline():
+    XML = """
+<DICT>
+    aa=<FLOAT name="aa"/><RESTOFLINE name="bb"/>
+</DICT>
+"""
+    BUFFER = """    
+aa=1.0 this is a rest of line
+"""
+    return do_test2(XML,BUFFER)
+
+def test_values_combined():
+    XML = """
+<DICT>
+    a=<FLOAT name="a"/>
+    b=<INT name="b"/>
+    c=<STR name="c"/>
+    <LITERAL name="d" input="HAH"/>
+    <WORD name="e" input="pha"/>
+    f=<REGEX name="f" input="a[0-9]*"/>
+    g=<TEXT name="g" begin="here" end="there"/>
+    <RESTOFLINE name="h"/>
+</DICT>
+"""
+    BUFFER = """    
+a=1.0 b=12 c=jhgf HAH phapahpppa f=a987987 g=herekjhsdkjhfsdtherethis is a rest of line
+"""
+    return do_test2(XML,BUFFER)
+
+def test_optional():
+    XML = """
+<DICT>
+    a=<FLOAT name="a"/> <OPTIONAL> b=<INT name="b"/> </OPTIONAL>
+</DICT>
+"""
+    BUFFER = """    
+a=1.0 b=12
+"""
+    return do_test2(XML,BUFFER)
+
+def test_optional_2():
+    XML = """
+<DICT>
+    a=<FLOAT name="a"/> <OPTIONAL> <DICT name="mydct"> b=<INT name="b"/> </DICT> </OPTIONAL>
+</DICT>
+"""
+    BUFFER = """    
+a=1.0
+"""
+    return do_test2(XML,BUFFER)
 
 def test0():
     XML = """
@@ -166,7 +425,7 @@ b1=0.5 b2=0.000001
 a1=20.0 a2=-1
 b1=-0.5 b2=-300
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test1():
     XML = """
@@ -195,7 +454,7 @@ iter= 5 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 iter= 6 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 iter= 7 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test1a():
     XML = """
@@ -218,7 +477,7 @@ iter= 2 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 a=3000
 iter= 3 Nfun= 3 Jrank=144 scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test2():
     XML = """
@@ -237,7 +496,7 @@ number of the computed nonzero singular value 144
 number of the computed singular values that are larger than the underflow threshold 144
 number of sweeps of Jacobi rotations needed for numerical convergence      11
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test3():
     XML = """<DICT>
@@ -753,7 +1012,42 @@ cooks:            12
               Cumulative Probability
 
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
+
+def test3a():
+    XML = """
+<DICT>
+
+SVD: singular numbers:
+<LOOP name="part3">
+    <DICT>
+        <INT name="id"/> <FLOAT name="val"/><EOL/>
+    </DICT>
+</LOOP>
+
+<LOOP name="part4">
+    <FLOAT/>
+</LOOP>
+
+</DICT>
+"""
+    BUFFER = """
+SVD: singular numbers:
+   1  0.3396E+13
+   2  0.8691E+12
+   3  0.1147E+12
+   4  0.2038E+11
+   5  0.1277E+11
+   6  0.2870E+10
+   7  0.1786E+10
+   8  0.1209E+10
+   9  0.7080E+09
+  0.3396E+13  0.8691E+12  0.1147E+12  0.2038E+11  0.1277E+11  0.2870E+10  0.1786E+10  0.1209E+10  0.7080E+09  0.5054E+09
+  0.3768E+09  0.9393E+08  0.7875E+08  0.4759E+08  0.3299E+08  0.2602E+08  0.1281E+08  0.1013E+08  0.8242E+07  0.4962E+07
+  0.4100E+07  0.2268E+07  0.1543E+07  0.1314E+07  0.1101E+07  0.8536E+06  0.4532E+06  0.3760E+06  0.2851E+06  0.2425E+06
+  0.1629E+06  0.1279E+06  0.1001E+06  0.9929E+05  0.8406E+05  0.7847E+05  0.6989E+05  0.5685E+05  0.5419E+05  0.4919E+05
+"""
+    return do_test2(XML,BUFFER)
 
 def test4():
     XML = """
@@ -779,7 +1073,38 @@ a=1 b=2
 iter= 1 Nfun= 2 Jrank=144 scgrad=  0.2E+05 scstep=  0.4E-04
 iter= 2 Nfun= 3           scgrad=  0.6E+04 scstep=  0.1E-04
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
+
+def test4a():
+    XML = """
+<DICT>
+    <DICT name="dct">
+        Fnorm= <FLOAT name="Fnorm"/> <OPTIONAL> rms= <FLOAT name="rms"/> </OPTIONAL>
+        a=<FLOAT name="a"/> 
+    </DICT>
+</DICT>
+"""
+    BUFFER = """
+Fnorm= 0.2262E+06 rms=    1.80
+a=1
+"""
+    return do_test2(XML,BUFFER)
+
+def test4b():
+    XML = """
+<DICT>
+    <LOOP name="inner_list">
+        <DICT name="dict_inner">
+            Nfun= <INT name="Nfun"/> <OPTIONAL>Jrank=<INT name="Jrank"/></OPTIONAL> scgrad= <FLOAT name="scgrad"/><EOL/>
+        </DICT>
+    </LOOP>
+</DICT>
+"""
+    BUFFER = """
+Nfun= 3           scgrad=  0.6E+04
+Nfun= 2 Jrank=144 scgrad=  0.2E+05
+"""
+    return do_test2(XML,BUFFER)
 
 def test5():
     XML = """
@@ -857,7 +1182,7 @@ RMS(mK)                                    1.83
 
 
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test6():
     XML = """
@@ -936,7 +1261,7 @@ def test6():
               Cumulative Probability
 
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test7():
     XML = """<DICT>
@@ -1011,7 +1336,7 @@ J step FLOAT
  W22222    0  0  0  0  0  0  5  0  0  0 -0.8897081454E-08 0.11E-06 0.13E-12   0.8E-01 ******* 0.35E-02 T -0.16E+10 -0.89E-08
 
 """
-    return do_test(XML,BUFFER)
+    return do_test2(XML,BUFFER)
 
 def test8():
     XML = """<DICT>
@@ -1095,11 +1420,31 @@ this is ending
     return do_test2(XML,BUFFER)
     
 TEST_CASES = [
+    test_dict,
+    test_dict_list_nested,
+    test_dict_eol,
+    test_dict_nested,
+    test_list,
+    test_list_eol,
+    test_dict_list_eol,
+    test_loop_eol,
+    test_loop_eol_nested,
+    test_loop_dict_eol_nested,
+    test_literal,
+    test_word,
+    test_regex,
+    test_text,
+    test_restofline,
+    test_values_combined,
+    test_optional,
+    test_optional_2,
     test0,
     test1,
     test1a,
     test2,
     test4,
+    test4a,
+    test4b,
     test3,
     test5,
     test6,
@@ -1107,8 +1452,8 @@ TEST_CASES = [
     test8,
 ]
 
-def get_test_cases():
-    args = sys.argv[1:]
+def get_test_cases(func_names):
+    args = func_names
     if not args:
         return TEST_CASES
     test_cases = []
@@ -1116,11 +1461,8 @@ def get_test_cases():
         test_cases.append(eval(arg))
     return test_cases
 
-def do_tests(test_cases=None,testgroup=None,session_name=None): # test all functions    
+def do_tests(test_cases,testgroup=None,session_name=None): # test all functions    
     
-    if not test_cases:
-        test_cases = get_test_cases()
-
     if testgroup is None:
         testgroup = __file__
 
@@ -1130,11 +1472,35 @@ def do_tests(test_cases=None,testgroup=None,session_name=None): # test all funct
         runtest(test_fun,testgroup,session_name,session_uuid,save=True)
         
 if __name__=='__main__':
-    
-    try:
-        session_name = sys.argv[1]
-    except IndexError:
-        session_name = '__not_supplied__'
+
+    parser = argparse.ArgumentParser(description=\
+        'Test driver for the FreeParse Python library.')
+
+    parser.add_argument('--session', type=str, default='__not_supplied__',
+        help='Session name')
+
+    parser.add_argument('--verbose', dest='verbose',
+        action='store_const', const=True, default=False,
+        help='Verbose mode')
+
+    parser.add_argument('--breakpoints', dest='breakpoints',
+        action='store_const', const=True, default=False,
+        help='Turn on breakpoints')
+
+    parser.add_argument('--debug', dest='debug',
+        action='store_const', const=True, default=False,
+        help='Grammar debugging mode')
+
+    parser.add_argument('--cases', nargs='*', type=str, 
+        help='List of test cases (functions)')
         
-    do_tests(test_cases=None,session_name=session_name)
+    args = parser.parse_args() 
+
+    VARSPACE['VERBOSE'] = args.verbose
+    VARSPACE['DEBUG'] = args.debug
+    VARSPACE['BREAKPOINTS'] = args.breakpoints    
+        
+    test_cases = get_test_cases(args.cases)
+        
+    do_tests(test_cases=test_cases,session_name=args.session)
     
