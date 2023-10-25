@@ -965,7 +965,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         grammar_body.setParseAction(add_to_buffer)
         _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
         
-        if VARSPACE['DEBUG'] and grammar: grammar_body.set_debug()
+        if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
         
         # combine grammar body to weed out extra spaces
         #grammar_body = Combine(grammar_body) 
@@ -979,7 +979,9 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #grammar_body = ZeroOrMore(LineEnd()+grammar_body).leaveWhitespace()
         
         #grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace() # WORKS, BUT NOT WITH LEADING EOLS
-        grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS
+        #grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-UNAWARE PARSING
+        
+        grammar_body = ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
                 
         # create a tail grammar, if present
         if self.__tail__ is not None:
@@ -993,7 +995,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         self.__types__ = TYPES
         self.__head__ = HEAD
                         
-        if VARSPACE['DEBUG'] and grammar: grammar_body.set_debug()
+        if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
                         
         return grammar_body,grammar_tail        
 
