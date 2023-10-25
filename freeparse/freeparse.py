@@ -45,10 +45,12 @@ class DataIterator():
         self.__vars__['isempty'] = False        
         if self.__datatype__ in {list,tuple}:
             self.__vars__['index'] = 0
+            if len(data)==0: self.__vars__['isempty'] = True
         elif self.__datatype__ in {dict}:
             self.__vars__['allkeys'] = set(data.keys())
             self.__vars__['usedkeys'] = set()
             #self.__index__ = None
+            if len(data)==0: self.__vars__['isempty'] = True
         
     def next(self,key=None):
         if self.__datatype__ in {list,tuple}:
@@ -187,7 +189,8 @@ def strip_new_lines(txt):
         IT'S NOT THE SAME AS .STRIP('\n') !!!
     """
 
-    if not txt: return txt
+    #if not txt: return txt
+    if not txt or not txt.strip(): return ''
 
     def fifnol(txt,forward=True):
         """ Find first non-empty line either from beginning 
@@ -305,13 +308,13 @@ class ParsingTree:
     def generate(self,data):
         dataiter = DataIterator(data)
         buf = self.generate_(dataiter)
-        #return buf
+        return buf
         #print('GENERATE:')
         #print(buf)
-        buf = [s for s in buf if s]
-        buf = split_list(buf,'\n')
-        lines = [' '.join(b) for b in buf]
-        return '\n'.join(lines)
+        #buf = [s for s in buf if s]
+        #buf = split_list(buf,'\n')
+        #lines = [' '.join(b) for b in buf]
+        #return '\n'.join(lines)
     
     def generate_(self,dataiter):
         """
@@ -329,8 +332,8 @@ class ParsingTree:
         _print('ParsingTree.generate_>>>dataiter.getall()',dataiter.getall())
         _print('---------------------------------------------------------------')
         
-        #buf = ''
-        buf = []
+        buf = ''
+        #buf = []
         
         #if self.__text__: buf += self.__text__
         #if self.__text__: _print('ParsingTree.generate_>>>self.__text__',self.__text__)
@@ -343,8 +346,8 @@ class ParsingTree:
             
             selfbuf = self.genval(dataiter) # -> if tag=FLOAT, STR, INT etc...
             _print('ParsingTree.generate_>>>selfbuf',selfbuf)
-            #buf += selfbuf
-            buf.append(selfbuf)
+            buf += selfbuf
+            #buf.append(selfbuf)
         except GenerationError:
             
             _print('breakpoint ParsingTree.generate_>>>except>>>1:')
@@ -352,7 +355,7 @@ class ParsingTree:
             
             self.handle_generation_error()
             
-        while self.__children__:
+        while self.__children__ and not dataiter.is_empty():
             
             _print('breakpoint ParsingTree.generate_>>>while>>>1:')
             if VARSPACE['BREAKPOINTS']: breakpoint()
@@ -360,11 +363,11 @@ class ParsingTree:
             #if dataiter.is_empty(): break
             
             if self.__text__: 
-                text = remove_leading_eol(self.__text__)
-                text = process_text_(text)
+                #text = remove_leading_eol(self.__text__)
+                #text = process_text_(text)
                 #buf += text
-                buf.append(text)
-                #buf += self.__text__
+                #buf.append(text)
+                buf += self.__text__
             
             if self.__text__: _print('ParsingTree.generate_>>>while>>>self.__text__',self.__text__)
                                                             
@@ -400,10 +403,10 @@ class ParsingTree:
                     el.handle_generation_error()
 
                 if el.__tail__: 
-                    tail = process_text_(el.__tail__)
+                    #tail = process_text_(el.__tail__)
                     #buf += tail
-                    buf.append(tail)
-                    #buf += el.__tail__
+                    #buf.append(tail)
+                    buf += el.__tail__
                 if el.__tail__: _print('ParsingTree.generate_>>>while>>>for>>>el.__tail__',el.__tail__)
                     
             if self.__stop_criteria__(dataiter): break # stopping criteria for each tag
@@ -573,7 +576,11 @@ class ParsingTreeValue(ParsingTree):
         # Do a type-specific check.
         self.check_data(data)
         #buf = str(data)
-        buf = self.to_str(data)
+        fmt = self.__xmlroot__.get('format')
+        if fmt:
+            buf = fmt%data
+        else:
+            buf = self.to_str(data)
         _print('%s.genval>>>buf'%self.__class__.__name__,buf)
         return buf
         
@@ -649,10 +656,10 @@ class TreeRESTOFLINE(ParsingTreeValue):
     def get_type(self):
         return str
      
-    def to_str(self,data): # rest of line takes extra space when generated back to string buffer
-        if data and data[0]==' ':
-            return data[1:]
-        return data
+    #def to_str(self,data): # rest of line takes extra space when generated back to string buffer
+    #    if data and data[0]==' ':
+    #        return data[1:]
+    #    return data
 
 class TreeREGEX(ParsingTreeValue):
 
@@ -1032,7 +1039,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             buf += '\n'
             
         if self.__tail__:
-            tail = process_tail(self.__tail__)
+            #tail = process_tail(self.__tail__)
             _print('TreeFIXCOL.generate>>>process_tail(self.__tail__)',tail,type(tail))
             buf += tail
             
