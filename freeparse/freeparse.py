@@ -586,7 +586,8 @@ class ParsingTreeValue(ParsingTree):
 class TreeFLOAT(ParsingTreeValue):
     
     def init_grammar(self):
-        return ppc.number()
+        #return ppc.number()
+        return ppc.sci_real()
     
     def get_type(self):
         return float
@@ -594,7 +595,8 @@ class TreeFLOAT(ParsingTreeValue):
 class TreeINT(ParsingTreeValue):
 
     def init_grammar(self):
-        return ppc.number()
+        #return ppc.number()
+        return ppc.signed_integer()
     
     def get_type(self):
         return int
