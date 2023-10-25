@@ -10,7 +10,7 @@ from itertools import cycle
 
 from pyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
-    Regex, Combine, LineStart)
+    Regex, Combine, LineStart, ParserElement)
 
 import pyparsing.common as ppc
 
@@ -24,6 +24,10 @@ VARSPACE = {
     'BREAKPOINTS': False,
     'DEBUG': False,
 }
+
+# Set default whitespace characters.
+ParserElement.set_default_whitespace_chars(' \t')
+#ParserElement.set_default_whitespace_chars(' \t\n') # default
 
 def _print(*args):
     if VARSPACE['VERBOSE']: print(*args)
@@ -176,6 +180,36 @@ def process_text_(txt): # for generate_ method of ParsingTree
     txt = '\n'.join(lines)
     return txt
 
+def strip_new_lines(txt): 
+    """ Remove heading and trailing new lines,
+        remove spaces on trailing and heading empty lines,
+        keep all spaces on lines with text.
+        IT'S NOT THE SAME AS .STRIP('\n') !!!
+    """
+
+    if not txt: return txt
+
+    def fifnol(txt,forward=True):
+        """ Find first non-empty line either from beginning 
+            or from end, return index """
+        i,step = (0,1) if forward else (-1,-1)
+        ieol = i
+        while -len(txt)<=i<len(txt) and txt[i] in {' ','\n'}:
+            if txt[i]=='\n': ieol = i
+            i += step
+        i = ieol + step if txt[ieol]=='\n' else ieol
+        return i
+    
+    istart = fifnol(txt,forward=True)
+    iend = fifnol(txt,forward=False)
+    
+    if iend==-1:
+        result = txt[istart:]
+    else:
+        result = txt[istart:iend+1]
+    
+    return result
+
 def split_list(lst,separator):
     from itertools import groupby
     chunks = [list(g) for k,g in groupby(lst, key=lambda x: x != separator) if k]
@@ -223,8 +257,10 @@ class ParsingTree:
         self.__buffer__ = self.__class__.get_buffer()
         self.__xmlroot__ = xmlroot  
         self.__tag__ = xmlroot.tag  
-        self.__text__ = process_text(xmlroot.text)
-        self.__tail__ = process_tail(xmlroot.tail)
+        #self.__text__ = process_text(xmlroot.text)
+        #self.__tail__ = process_tail(xmlroot.tail)
+        self.__text__ = strip_new_lines(xmlroot.text)
+        self.__tail__ = strip_new_lines(xmlroot.tail)
         self.__varname__ = xmlroot.get('name')
         self.__children__ = [] # each child is a tag
         
@@ -1038,7 +1074,7 @@ class TreeOPTIONAL(ParsingTreeAux):
         _print('TreeOPTIONAL.handle_generation_error')
         pass
 
-class TreeEOL(ParsingTreeAux):
+class TreeEOL_OLD(ParsingTreeAux):
 
     #def process(self,grammar_body,grammar_tail):
     #    grammar = sum_grammars(grammar_body,grammar_tail)
@@ -1064,6 +1100,51 @@ class TreeEOL(ParsingTreeAux):
         buf = '\n'
         return buf
 
+class TreeEOL(ParsingTreeAux):
+
+    __neols__ = 1
+
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        g = EOL*self.__neols__
+        if grammar: g += grammar
+        return g
+    
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        buf = '\n'*self.__neols__
+        return buf
+
+class TreeEOL2(TreeEOL):
+    __neols__ = 2
+class TreeEOL3(TreeEOL):
+    __neols__ = 3
+class TreeEOL4(TreeEOL):
+    __neols__ = 4
+class TreeEOL5(TreeEOL):
+    __neols__ = 5
+class TreeEOL6(TreeEOL):
+    __neols__ = 6
+
+class TreeEOLS(ParsingTreeAux):
+    
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        neols = self.__xmlroot__.get('n')
+        if not neols: raise Exception('Invalid use of n in EOLS')
+        neols = int(neols)
+        g = EOL*neols
+        if grammar: g += grammar
+        return g
+
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        neols = self.__xmlroot__.get('n')
+        if not neols: raise Exception('Invalid use of n in EOLS')
+        neols = int(neols)
+        buf = '\n'*neols
+        return buf
+    
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
     
     def process(self,grammar_body,grammar_tail):
@@ -1091,6 +1172,12 @@ DISPATCHER = {
     'LOOP': TreeLOOP,
     'OPTIONAL': TreeOPTIONAL,
     'EOL': TreeEOL,
+    'EOL2': TreeEOL2,
+    'EOL3': TreeEOL3,
+    'EOL4': TreeEOL4,
+    'EOL5': TreeEOL5,
+    'EOL6': TreeEOL6,
+    'EOLS': TreeEOLS,
     'LINEEND': TreeEOL,
     'LITERAL': TreeLITERAL,
     'WORD':TreeWORD,
