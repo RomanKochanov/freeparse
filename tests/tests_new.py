@@ -164,7 +164,8 @@ def do_test2(XML,BUFFER):
     t = time()-t
     return t,col
 
-do_test = do_test1
+#do_test = do_test1
+do_test = do_test2
 
 def test_stub():
     XML = """
@@ -222,6 +223,46 @@ inputted lines:
 """
     return do_test(XML,BUFFER)
 
+def test_loop():
+    XML = """
+<DICT>
+
+*** LEAST SQUARES ITERATIONS***
+
+<EOL2/>
+
+<LOOP name="part0b">
+    <DICT>Fnorm= 
+        <FLOAT name="Fnorm"/> xi= 
+        <FLOAT name="xi"/> rms= 
+        <FLOAT name="rms"/>         
+        <OPTIONAL> mu= 
+            <FLOAT name="mu"/> size= 
+            <FLOAT name="size"/>
+        </OPTIONAL>         
+        <EOL/>        
+    </DICT>AAA 
+    
+    <EOL/>
+    
+</LOOP>BBB
+
+</DICT>
+"""
+    BUFFER = """*** LEAST SQUARES ITERATIONS***
+
+BBB
+"""
+#    BUFFER = """*** LEAST SQUARES ITERATIONS***
+#
+#Fnorm= 0.1102E+07 xi=    4.54 rms=    1.83
+#AAA
+#Fnorm= 0.1102E+07 xi=    4.54 rms=    1.83 mu=  0.1E+02 size=  0.3E-03
+#AAA
+#BBB
+#"""
+    return do_test(XML,BUFFER)
+    
 def test_part0b():
     XML = """
 <DICT>
@@ -231,25 +272,29 @@ def test_part0b():
 <EOL4/>
 
 <LOOP name="part0b">
-    <DICT> Fnorm= 
-        <FLOAT name="Fnorm"/> xi= 
-        <FLOAT name="xi"/> rms= 
-        <FLOAT name="rms"/> 
+    <DICT>Fnorm=
+        <FLOAT name="Fnorm" format="%11.4E"/> xi=
+        <FLOAT name="xi" format="%8.2f"/> rms=
+        <FLOAT name="rms" format="%8.2f"/> 
         
-        <OPTIONAL> mu= 
-            <FLOAT name="mu"/> size= 
-            <FLOAT name="size"/>
-        </OPTIONAL> <EOL/>
+        <OPTIONAL> mu=
+            <FLOAT name="mu" format="%9.1E"/> size=
+            <FLOAT name="size" format="%9.1E"/>
+        </OPTIONAL> 
+        
+        <EOL/>
         
         <LOOP name="inner_list">
-            <DICT name="dict_inner"> iter= 
-                <INT name="iter"/> Nfun= 
-                <INT name="Nfun"/> Jrank=
-                <INT name="Jrank"/> scgrad= 
-                <FLOAT name="scgrad"/> scstep= 
-                <FLOAT name="scstep"/> 
-            </DICT> <EOL/>
-        </LOOP>    
+            <DICT name="dict_inner">iter=
+                <INT name="iter" format="%2d"/> Nfun=
+                <INT name="Nfun" format="%2d"/> Jrank=
+                <INT name="Jrank" format="%3d"/> scgrad=
+                <FLOAT name="scgrad" format="%9.1E"/> scstep=
+                <FLOAT name="scstep" format="%9.1E"/> 
+            </DICT> 
+            
+            <EOL/>
+        </LOOP>
     </DICT>
 </LOOP>
 
@@ -270,11 +315,11 @@ def test_part1():
 <DICT>
 
 <DICT name="part1">
-SVD of dimensionless Fisher matrix: <EOL/>
-scaling factor  <FLOAT name="sf"/> <EOL/>
-number of the computed nonzero singular value <INT name="nsv"/> <EOL/>
-number of the computed singular values that are larger than the underflow threshold <INT name="nsvt"/> <EOL/>
-number of sweeps of Jacobi rotations needed for numerical convergence <INT name="nswee"/> <EOL/>
+SVD of dimensionless Fisher matrix:<EOL/>
+scaling factor<FLOAT name="sf" format="%9.1E"/><EOL/>
+number of the computed nonzero singular value<INT name="nsv" format="%4d"/><EOL/>
+number of the computed singular values that are larger than the underflow threshold<INT name="nsvt" format="%4d"/><EOL/>
+number of sweeps of Jacobi rotations needed for numerical convergence<INT name="nswee" format="%8d"/><EOL/>
 </DICT>
 
 </DICT>
@@ -287,7 +332,14 @@ number of sweeps of Jacobi rotations needed for numerical convergence      11
 """
     return do_test(XML,BUFFER)
 
-def test_part34(): # FOUND ELUSIVE BUG IN RECORING DATA WHILE PARSING!!! USE DEBUG
+# FOUND ELUSIVE BUG IN RECORING DATA WHILE PARSING!!! USE DEBUG
+# ATTENTION!!! VERY IMPORTANT:
+# PUT <EOL/> TAG INSIDE(!!!!) DICTIONARY, NOT OUTSIDE!
+# WHEN PUTTING OUTSIDE, IT CAN RECORD ADDITIONAL LINE FROM DIFFERENT BLOCK!!!
+# THIS IS BECAUSE THE PARSING TRIGGERS ARE CALLED WHEN CONTAINER IS ALL DONE.
+# PUTTING MORE THINGS INSIDE CONTAINER (E.G. IN DICT) MAKES IT LESS PROBABLE
+# TO FAIL AT THE END OF THE LOOP
+def test_part34():
     XML = """
 <DICT>
 
@@ -296,7 +348,8 @@ SVD: singular numbers: <EOL/>
     <DICT>
         <INT name="id" format="%4d"/> 
         <FLOAT name="val" format="%12.4E"/> 
-    </DICT> <EOL/>
+        <EOL/>
+    </DICT> 
 </LOOP>
 
 <LOOP name="part4">
@@ -313,22 +366,54 @@ SVD: singular numbers: <EOL/>
 """
     return do_test(XML,BUFFER)
 
+def test_fixcol():
+    XML = """
+<DICT>
+
+THIS IS A HEADER
+
+<EOL/>
+
+<FIXCOL name="myloop">
+//HEADER
+0 v1 float
+1 v2 str
+2 v3 float
+
+//DATA
+0_________________1__________2________________
+<!--
+             0.107  -D1      -0.1724582096E-09
+             0.104  Cj_5     -0.4401774466E-07
+             0.065  Z1112     0.1435569470E-02
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+             0.107  -D1      -0.1724582096E-09
+             0.104  Cj_5     -0.4401774466E-07
+             0.065  Z1112     0.1435569470E-02
+"""
+    return do_test(XML,BUFFER)
+
 def test_part56():
     XML = """
 <DICT>
 
 <DICT name="part5">
-conditional number of Fisher matrix  <FLOAT name="condfish"/> <EOL/>
+conditional number of Fisher matrix<FLOAT name="condfish" format="%12.4E"/><EOL/>
 <EOL/>
-SVD: right eigenvectors (V) <EOL/>
-cumulative contribution of outputted Heff parms is <FLOAT name="cumd"/>
+SVD: right eigenvectors (V)<EOL/>
+cumulative contribution of outputted Heff parms is<FLOAT name="cumd" format="%6.2f"/>
 </DICT>
 
-<EOL2/>
+<EOL3/>
 
 <LOOP name="part6">
 <DICT>
-singular number: <FLOAT name="singular_number"/><EOL/>
+singular number:<FLOAT name="singular_number" format="%12.4E"/><EOL/>
 <FIXCOL name="inner">
 //HEADER
 0 v1 float
@@ -383,13 +468,13 @@ def test_part78():
     XML = """
 <DICT>
 
-**** FIT SUMMARY ****
+                         **** FIT SUMMARY ****
 <EOL2/>
 
 <DICT name="part7">
 sse                                  <FLOAT name="sse" format="%10.4E"/> <EOL/>
-dimensionless standard deviation           <FLOAT name="chi2" format="4.2f"/> <EOL/>
-RMS(mK)                                    <FLOAT name="rms" format="4.2f"/> <EOL/>
+dimensionless standard deviation           <FLOAT name="chi2" format="%4.2f"/> <EOL/>
+RMS(mK)                                    <FLOAT name="rms" format="%4.2f"/> <EOL/>
 <EOL/>
  Conditional number of the Jt*J matrix  <FLOAT name="cond" format="%12.4E"/>
 </DICT>
@@ -400,6 +485,8 @@ RMS(mK)                                    <FLOAT name="rms" format="4.2f"/> <EO
 
     Name          Parameter             Estimate         Error    Sensit.   Est/Err Inflat.  Weight Tags  Gradient    Step
 ---------- R--M1-M2-M3-D--1--2--3--L--J- ---------------- --------  -------  -------- ------- ------- ----  --------    ----
+
+<EOL/>
 
 <FIXCOL name="part8">
 //HEADER
@@ -413,7 +500,7 @@ RMS(mK)                                    <FLOAT name="rms" format="4.2f"/> <EO
 7 A2 INT
 8 A3 INT
 9 L INT
-A J FLOAT
+A J INT
 B estimate FLOAT
 C error FLOAT
 D sensit FLOAT
@@ -497,7 +584,8 @@ correlation_output_threshold   <FLOAT name="corr_out_thresh"/>
     <INT name='y9' format="%3d"/>  
     <INT name='y10' format="%3d"/>  
     <FLOAT name="val" format="%9.3f"/>
-</DICT> <EOL/>
+    <EOL/>
+</DICT>
 </LOOP>
 
 </DICT>
@@ -523,7 +611,7 @@ def test_part1112():
 <DICT>
 
                               *** LINE STATISTICS ***
-<EOL2>
+<EOL2/>
 
 <DICT name="part11">
 Fmax input    <FLOAT name="Fmax"/> <EOL/>
@@ -566,7 +654,8 @@ C - point which has large affection on parameters of the model
         <INT name="c_" format="%2d"/>
         <INT name="n_" format="%5d"/>
         <RESTOFLINE name="comment"/>
-    </DICT> <EOL/>
+        <EOL/>
+    </DICT> 
 </LOOP>
 
 </DICT>
@@ -666,7 +755,8 @@ iso  J     N    mean_res         rms   rms/max_res   max_res
         <FLOAT name="rms" format="%12.2f"/>
         <FLOAT name="rms_upon_max_res" format="%12.2f"/>
         <FLOAT name="max_res" format="%12.2f"/>
-    </DICT> <EOL/>
+        <EOL/>
+    </DICT>
 </LOOP>
 
 </DICT>
@@ -703,7 +793,7 @@ src lines  jm  jM   mean_unc mean_res      rms
         <FLOAT name="mean_unc" format="%10.3f"/>
         <FLOAT name="mean_res" format="%10.3f"/>  
         <FLOAT name="rms" format="%10.3f"/>
-        <RESTOFLINE name="refs"/>                                                                                                                  
+        <RESTOFLINE name="refs"/>
     </DICT> <EOL/>
 </LOOP>
 
@@ -712,11 +802,11 @@ src lines  jm  jM   mean_unc mean_res      rms
     BUFFER = """***** SOURCE STATISTICS *****
 
 src lines  jm  jM   mean_unc mean_res      rms
-  1     9   5  27     0.020    -0.024     0.026 Groh JMS 146 161 (1991)                                                                                                                     
-  2    66   5  45     0.001    -0.000     0.003 Chou JMS 172 233 (1995)                                                                                                                     
-  3    99   1  54     0.000     0.000     0.000 Bradley IEEE QE-22 234(1986)                                                                                                                
-  4    93   3  45     0.534     0.089     0.232 Siemsen OptComm 22 11 (1977)                                                                                                                
-  5    95   5  63     0.000     0.000     0.001 Maki JMS 167 211 (1994)                                                                                                                     
+  1     9   5  27     0.020    -0.024     0.026 Groh JMS 146 161 (1991)
+  2    66   5  45     0.001    -0.000     0.003 Chou JMS 172 233 (1995)
+  3    99   1  54     0.000     0.000     0.000 Bradley IEEE QE-22 234(1986)
+  4    93   3  45     0.534     0.089     0.232 Siemsen OptComm 22 11 (1977)
+  5    95   5  63     0.000     0.000     0.001 Maki JMS 167 211 (1994)
 """
     return do_test(XML,BUFFER)
 
@@ -733,7 +823,7 @@ def test_part16():
     <DICT>
         <INT name="i" format="%2d"/>
         <INT name="name" format="%5d"/>
-        <INT name="symm" format="%2d"/>
+        <INT name="symm" format="%5d"/>
         <FLOAT name="mass1" format="%12.8f"/>
         <FLOAT name="mass2" format="%12.8f"/>  
         <FLOAT name="mass3" format="%12.8f"/>
@@ -795,7 +885,12 @@ def test_part18():
 <EOL3/>
 
 <DICT name="part18">
-    <TEXT name="plot" begin="Probability plot for normal distribution" end="Cumulative Probability"/>
+    <TEXT 
+        name="plot" 
+        begin="Probability plot for normal distribution" 
+        end="Cumulative Probability"
+        format="              %s"
+    />
 </DICT>
 
 </DICT>
@@ -878,6 +973,8 @@ TEST_CASES = [
     test_part16,
     test_part17,
     test_part18,
+    test_loop,
+    test_fixcol,
 ]
 
 def get_test_cases(func_names):
