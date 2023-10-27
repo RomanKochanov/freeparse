@@ -10,7 +10,7 @@ from itertools import cycle
 
 from pyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
-    Regex, Combine, LineStart, ParserElement)
+    Regex, Combine, LineStart, ParserElement, OneOrMore)
 
 import pyparsing.common as ppc
 
@@ -1157,18 +1157,24 @@ class TreeEOLS(ParsingTreeAux):
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
         neols = self.__xmlroot__.get('n')
-        if not neols: raise Exception('Invalid use of n in EOLS')
-        neols = int(neols)
-        g = EOL*neols
+        #if not neols: raise Exception('Invalid use of n in EOLS')
+        if neols:
+            neols = int(neols)
+            g = EOL*neols
+        else:
+            g = OneOrMore(EOL)
         if grammar: g += grammar
         return g
 
     def genval(self,dataiter):
         _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
         neols = self.__xmlroot__.get('n')
-        if not neols: raise Exception('Invalid use of n in EOLS')
-        neols = int(neols)
-        buf = '\n'*neols
+        #if not neols: raise Exception('Invalid use of n in EOLS')
+        if neols:
+            neols = int(neols)
+            buf = '\n'*neols
+        else:
+            buf = '\n'
         return buf
     
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
