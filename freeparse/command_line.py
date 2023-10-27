@@ -195,7 +195,6 @@ def main():
     # If specified, generate a railroad diagram.
     #if args.diagram is not None and args.grammar:
     if args.grammar:        
-        print(0) # DELETE
 
         if not grammar_flag:
             raise Exception('XML grammar not provided')
