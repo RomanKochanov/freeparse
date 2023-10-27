@@ -144,6 +144,13 @@ def main():
     parser.add_argument('--difflib', dest='difflib',
         action='store_const', const=True, default=False,
         help='Comparing buffers using difflib (can be slow)')
+
+    parser.add_argument('--translate', dest='translate',
+        action='store_const', const=True, default=False,
+        help='Translate input file to specified encoding')
+
+    parser.add_argument('--target_encoding', type=str,
+        help='Encoding of the translated file')
         
     args = parser.parse_args() 
         
@@ -187,7 +194,8 @@ def main():
         
     # If specified, generate a railroad diagram.
     #if args.diagram is not None and args.grammar:
-    if args.grammar:
+    if args.grammar:        
+        print(0) # DELETE
 
         if not grammar_flag:
             raise Exception('XML grammar not provided')
@@ -219,31 +227,31 @@ def main():
     elif args.input and args.grammar and not args.test_grammar: 
         # get raw file from data structure and XML format
 
-            # freeparse --grammar test.xml --input test.json --format json --generate --output test.raw
+        # freeparse --grammar test.xml --input test.json --format json --generate --output test.raw
 
-            if not grammar_flag:
-                raise Exception('XML grammar not provided')
+        if not grammar_flag:
+            raise Exception('XML grammar not provided')
 
-            if args.format=='json':
-                with open(args.input,'r') as f:
-                    data = json.load(f)
+        if args.format=='json':
+            with open(args.input,'r') as f:
+                data = json.load(f)
         
-            elif args.format=='pickle':
-                with open(args.input,'rb') as f:
-                    data = pickle.load(f)
-            else:
-                raise Exception('unknown format: "%s"'%args.format)
+        elif args.format=='pickle':
+            with open(args.input,'rb') as f:
+                data = pickle.load(f)
+        else:
+            raise Exception('unknown format: "%s"'%args.format)
 
-            if not args.output:
-                outfile,_ = os.path.splitext(args.input)
-            else:
-                outfile = args.output
+        if not args.output:
+            outfile,_ = os.path.splitext(args.input)
+        else:
+            outfile = args.output
                 
-            buf = tree.generate(data)
-            with open(outfile,'w') as f:
-                f.write(buf)
+        buf = tree.generate(data)
+        with open(outfile,'w') as f:
+            f.write(buf)
 
-            print('Output saved to',outfile)
+        print('Output saved to',outfile)
             
     elif args.test_grammar:
         # grammar testing mode
@@ -298,6 +306,22 @@ def main():
         
         # Print elapsed time.
         print('Elapsed time: %f sec.'%(time()-t))
+        
+    if args.translate:
+        
+        # Open original file with specified encoding.
+        with open(args.input,'r',encoding=args.encoding) as f:
+            strbuf = f.read()
+            
+        # Write to target file with specified target encoding.
+        outfile = args.output if args.output else args.input + '.' + args.target_encoding        
+        with open(outfile,'w',encoding=args.target_encoding) as f:
+            f.write(strbuf)
+        
+        print('=== Translating input file encodings ===')    
+        print('Initial file: %s (%s)'%(args.input,args.encoding))
+        print('Target file: %s (%s)'%(outfile,args.target_encoding))
+            
 
 
 
