@@ -140,6 +140,10 @@ def main():
     parser.add_argument('--test-grammar', dest='test_grammar',
         action='store_const', const=True, default=False,
         help='Grammar testing mode (parse->generate->compare)')
+
+    parser.add_argument('--difflib', dest='difflib',
+        action='store_const', const=True, default=False,
+        help='Comparing buffers using difflib (can be slow)')
         
     args = parser.parse_args() 
         
@@ -275,9 +279,10 @@ def main():
         print('2st stage parsed data structure saved to',outfile_data2)
         
         # 3rd stage (a): compare "raw" buffers.
-        outfile_bufferdiff = filestem+'.buffers_diff'
-        compare_buffers(rawbuf2,rawbuf,outfile_bufferdiff)
-        print('3rd stage buffer2-buffer diff comparison saved to',outfile_bufferdiff)
+        if args.difflib:
+            outfile_bufferdiff = filestem+'.buffers_diff'
+            compare_buffers(rawbuf2,rawbuf,outfile_bufferdiff)
+            print('3rd stage buffer2-buffer diff comparison saved to',outfile_bufferdiff)
         
         # 4th stage (a): compare data structures
         outfile_datadiff = filestem+'.data_diff'
