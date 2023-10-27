@@ -608,6 +608,21 @@ class TreeINT(ParsingTreeValue):
     def get_type(self):
         return int
 
+class TreeNUMBER(ParsingTreeValue):
+    
+    TYPES = {
+        'int': int,
+        'float': float,
+    }
+
+    def init_grammar(self):
+        return ppc.number()
+    
+    def get_type(self):
+        typ = self.__xmlroot__.get('type').lower()
+        if typ: return self.__class__.TYPES[typ]
+        return float
+
 class TreeSTR(ParsingTreeValue):
 
     def init_grammar(self):
@@ -1177,6 +1192,7 @@ class TreeGROUP(ParsingTreeAux):
 DISPATCHER = {
     'FLOAT': TreeFLOAT,
     'INT': TreeINT,
+    'NUMBER': TreeNUMBER,
     'STR': TreeSTR,
     'DICT': TreeDICT,
     'LIST': TreeLIST,
