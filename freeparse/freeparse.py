@@ -1108,10 +1108,9 @@ class TreeSOL(ParsingTreeAux):
 
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
-        if grammar:
-            return SOL+grammar
-        else:
-            return SOL
+        g = SOL
+        if grammar: g += grammar
+        return g
     
 class TreeEOL_OLD(ParsingTreeAux):
 
@@ -1190,6 +1189,41 @@ class TreeEOLS(ParsingTreeAux):
             buf = '\n'
         return buf
     
+class TreeSKIPLINE(ParsingTreeAux):
+    
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        #g = SOL+restOfLine+EOL # this should be right???
+        g = restOfLine+EOL
+        if grammar: g += grammar
+        return g
+
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        buf = '\n'
+        return buf
+
+class TreeSKIPLINES(ParsingTreeAux):
+    
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        nlines = self.__xmlroot__.get('n')
+        if not nlines: raise Exception('n empty in SKIPLINES')
+        nlines = int(nlines)
+        #g = SOL+restOfLine+EOL # this should be right???
+        g = restOfLine+EOL
+        g *= nlines
+        if grammar: g += grammar
+        return g
+
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        nlines = self.__xmlroot__.get('n')
+        if not nlines: raise Exception('n empty in SKIPLINES')
+        nlines = int(nlines)
+        buf = '\n'*nlines
+        return buf
+    
 class TreeLEAVEWHITESPACE(ParsingTreeAux): 
     
     def process(self,grammar_body,grammar_tail):
@@ -1227,6 +1261,8 @@ DISPATCHER = {
     'LINEEND': TreeEOL,
     'SOL': TreeSOL,
     'LINESTART': TreeSOL,
+    'SKIPLINE': TreeSKIPLINE,
+    'SKIPLINES': TreeSKIPLINES,
     'LITERAL': TreeLITERAL,
     'WORD':TreeWORD,
     'RESTOFLINE': TreeRESTOFLINE,

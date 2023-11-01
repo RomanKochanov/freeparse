@@ -958,6 +958,64 @@ def test_part18():
 """
     return do_test(XML,BUFFER)
 
+def test_skipline():
+    XML = """
+<DICT>
+
+<DICT name="part17">
+total lines<INT name="lines" format="%8d"/> <EOL/>
+
+<SKIPLINE/>
+<SKIPLINE/>
+<SKIPLINE/>
+
+energy levels:<INT name="elevels" format="%6d"/> <EOL/>
+outliers:<INT name="outliers" format="%11d"/> <EOL/>
+influentals:<INT name="influentals" format="%8d"/> <EOL/>
+cooks:<INT name="cooks" format="%14d"/> <EOL/>
+</DICT>
+
+</DICT>
+"""
+    BUFFER = """total lines   63549
+
+total data:    53713
+
+energy levels: 10264
+outliers:        620
+influentals:    4342
+cooks:            12
+"""
+    return do_test(XML,BUFFER)
+
+def test_skiplines():
+    XML = """
+<DICT>
+
+<DICT name="part17">
+total lines<INT name="lines" format="%8d"/> <EOL/>
+
+<SKIPLINES n="3"/>
+
+energy levels:<INT name="elevels" format="%6d"/> <EOL/>
+outliers:<INT name="outliers" format="%11d"/> <EOL/>
+influentals:<INT name="influentals" format="%8d"/> <EOL/>
+cooks:<INT name="cooks" format="%14d"/> <EOL/>
+</DICT>
+
+</DICT>
+"""
+    BUFFER = """total lines   63549
+
+total data:    53713
+
+energy levels: 10264
+outliers:        620
+influentals:    4342
+cooks:            12
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
