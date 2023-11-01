@@ -1016,6 +1016,34 @@ cooks:            12
 """
     return do_test(XML,BUFFER)
 
+def test_loop_fix():
+    XML = """
+<DICT>
+
+<DICT name="part17">
+
+<LOOP name="header" min="5" max="5">
+    <RESTOFLINE/><EOL/>
+</LOOP>
+
+outliers:<INT name="outliers" format="%11d"/> <EOL/>
+influentals:<INT name="influentals" format="%8d"/> <EOL/>
+cooks:<INT name="cooks" format="%14d"/> <EOL/>
+</DICT>
+
+</DICT>
+"""
+    BUFFER = """total lines   63549
+
+total data:    53713
+
+energy levels: 10264
+outliers:        620
+influentals:    4342
+cooks:            12
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
@@ -1033,6 +1061,8 @@ TEST_CASES = [
     test_part18,
     test_loop,
     test_fixcol,
+    test_skipline,
+    test_skiplines,
 ]
 
 def get_test_cases(func_names):

@@ -832,7 +832,17 @@ class TreeLOOP(ParsingTreeContainer):
     #    grammar_body = ZeroOrMore(grammar_body)
     #    return sum_grammars(grammar_body,grammar_tail)
     def process(self,grammar_body,grammar_tail):
-        grammar_body = ZeroOrMore(grammar_body)
+        miniter = self.__xmlroot__.get('min')
+        if not miniter: 
+            miniter = ...
+        else:
+            miniter = int(miniter)
+        maxiter = self.__xmlroot__.get('max')
+        if not maxiter: 
+            maxiter = ...
+        else:
+            maxiter = int(maxiter)
+        grammar_body = grammar_body[miniter,maxiter]
         return sum_grammars(grammar_body,grammar_tail)
 
     def get_type(self):
