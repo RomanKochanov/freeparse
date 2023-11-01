@@ -16,6 +16,7 @@ import pyparsing.common as ppc
 
 import xml.etree.ElementTree as ET
 
+SOL = LineStart()
 EOL = LineEnd()
 EMPTY = Empty()
 
@@ -827,6 +828,9 @@ class TreeLOOP(ParsingTreeContainer):
     def get_buffer(cls):
         return BufferList()
 
+    #def process(self,grammar_body,grammar_tail):
+    #    grammar_body = ZeroOrMore(grammar_body)
+    #    return sum_grammars(grammar_body,grammar_tail)
     def process(self,grammar_body,grammar_tail):
         grammar_body = ZeroOrMore(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
@@ -1100,6 +1104,15 @@ class TreeOPTIONAL(ParsingTreeAux):
         _print('TreeOPTIONAL.handle_generation_error')
         pass
 
+class TreeSOL(ParsingTreeAux):
+
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        if grammar:
+            return SOL+grammar
+        else:
+            return SOL
+    
 class TreeEOL_OLD(ParsingTreeAux):
 
     #def process(self,grammar_body,grammar_tail):
@@ -1212,6 +1225,8 @@ DISPATCHER = {
     'EOL6': TreeEOL6,
     'EOLS': TreeEOLS,
     'LINEEND': TreeEOL,
+    'SOL': TreeSOL,
+    'LINESTART': TreeSOL,
     'LITERAL': TreeLITERAL,
     'WORD':TreeWORD,
     'RESTOFLINE': TreeRESTOFLINE,
