@@ -1104,11 +1104,54 @@ def test_format_fortranformat_D():
 """
     return do_test(XML,BUFFER)
 
+def test_buffer():
+    XML = """
+<DICT>
+
+<BUFFER name="a1" nchars="3"/>
+<BUFFER name="a2" nchars="4" type="str"/>
+<BUFFER name="a3" nchars="5" type="int" format="%5d"/>
+<BUFFER name="a4" nchars="7" type="float" format="%7.1E"/>
+
+</DICT>
+"""
+    BUFFER = """ ABCDE  12341.2E-10
+"""
+    return do_test(XML,BUFFER)
+
+def test_loop_optional_comments():
+    XML = """
+<DICT>
+
+<LOOP name="parameters">
+    <OPTIONAL>*<RESTOFLINE/><EOL/></OPTIONAL>
+    <DICT>
+        <INT name="id" format="%3d"/>
+        <FLOAT name="value" format="(D24.16)" formatter="fortranformat"/>
+        <EOL/>
+    </DICT>
+</LOOP>
+
+</DICT>
+"""
+    BUFFER = """ 83  0.2147721405014595D-14
+ 84 -0.2753089078159071D-15
+ 85 -0.2597822208698380D-19
+*     L-doubling
+ 86 -0.1531145611211136D-03
+ 87  0.0000000000000000D+00
+ 98 -0.1951636311583229D-14
+*     Fermi
+ 99 -0.2660423874167142D+02
+100  0.2506913679661035D+00
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
     test_part1,
-    test_part34,
+    test_part34, # fails
     test_part56,
     test_part78,
     test_part910,
@@ -1126,7 +1169,10 @@ TEST_CASES = [
     test_format_python_percent_omit,
     test_format_python_percent,
     test_format_fortranformat_F,
-    test_format_fortranformat_E
+    test_format_fortranformat_E,
+    test_format_fortranformat_D,
+    test_buffer,
+    test_loop_optional_comments, # fails
 ]
 
 def get_test_cases(func_names):

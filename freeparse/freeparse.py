@@ -695,9 +695,29 @@ class TreeNUMBER(ParsingTreeValue):
         return ppc.number()
     
     def get_type(self):
-        typ = self.__xmlroot__.get('type').lower()
-        if typ: return self.__class__.TYPES[typ]
+        typ = self.__xmlroot__.get('type')
+        if typ: return self.__class__.TYPES[typ.lower()]
         return float
+
+class TreeBUFFER(ParsingTreeValue):
+    
+    TYPES = {
+        'int': int,
+        'float': float,
+        'str': str,
+    }
+
+    def init_grammar(self):
+        nchars = self.__xmlroot__.get('nchars')
+        if not nchars: raise Exception('BUFFER tag requires "nchars"'
+            ' parameter to be supplied')
+        nchars = int(nchars)
+        return Regex('.{%d}'%nchars).leaveWhitespace()
+    
+    def get_type(self):
+        typ = self.__xmlroot__.get('type')
+        if typ: return self.__class__.TYPES[typ.lower()]
+        return str
 
 class TreeSTR(ParsingTreeValue):
 
@@ -1335,6 +1355,7 @@ DISPATCHER_TAGS = {
     'INT': TreeINT,
     'NUMBER': TreeNUMBER,
     'STR': TreeSTR,
+    'BUFFER': TreeBUFFER,
     'DICT': TreeDICT,
     'LIST': TreeLIST,
     'LOOP': TreeLOOP,
