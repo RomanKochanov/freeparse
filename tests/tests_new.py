@@ -1092,6 +1092,18 @@ def test_format_fortranformat_E():
 """
     return do_test(XML,BUFFER)
 
+def test_format_fortranformat_D():
+    XML = """
+<DICT>
+
+<FLOAT name="value" format="(D9.3)" formatter="fortranformat"/>
+
+</DICT>
+"""
+    BUFFER = """0.123D-10
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,

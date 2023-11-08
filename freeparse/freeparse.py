@@ -12,7 +12,7 @@ from pyparsing import (LineEnd, Literal, Empty, Word,
     printables, ZeroOrMore, Optional, Group, restOfLine, 
     Regex, Combine, LineStart, ParserElement, OneOrMore)
 
-import pyparsing.common as ppc
+import pyparsing.common as pyparsing_common
 
 import xml.etree.ElementTree as ET
 
@@ -36,6 +36,30 @@ def _print(*args):
 class GenerationError(Exception):
     "Raised when the raw file generation has been failed"
     pass
+
+# Custom converting to float
+def convert_to_float(tokens):
+    """ intended to be used in pyparsing_common_ only """
+    val = tokens[0]
+    # DAMN YOU FORTRAN!!!
+    try:
+        return float(val)
+        #return pyparsing_common.convert_to_float(val)
+    except ValueError: # this can happen when float number contains D-exponent
+        val = val.lower().replace('d','e')
+        #return pyparsing_common.convert_to_float(val)
+        return float(val)
+
+# Custom pyparsing_common class to parse Fortran-generated floats (D-exponents)
+class pyparsing_common_(pyparsing_common):    
+    sci_real = (
+        Regex(r"[+-]?(?:\d+(?:[eEdD][+-]?\d+)|(?:\d+\.\d*|\.\d+)(?:[eEdD][+-]?\d+)?)")
+        .set_name("real number with scientific notation")
+        .set_parse_action(convert_to_float)
+    )
+
+#ppc = pyparsing_common # default set of parsers
+ppc = pyparsing_common_ # custom set of parsers
 
 # FORMAT PROCESSORS FOR GENERATION OF VALUE-BASED TAGS
 class Formatter:
@@ -569,7 +593,7 @@ class ParsingTreeValue(ParsingTree):
         type_ = self.get_type()
         
         # add type conversion
-        grammar.setParseAction(lambda tokens: type_(tokens[0]))
+        grammar.addParseAction(lambda tokens: type_(tokens[0]))
         
         # attach the trigger             
         def insert_to_parent(self,value):            
