@@ -37,6 +37,61 @@ class GenerationError(Exception):
     "Raised when the raw file generation has been failed"
     pass
 
+# FORMAT PROCESSORS FOR GENERATION OF VALUE-BASED TAGS
+class Formatter:
+    
+    @classmethod
+    def create(self,tree):
+        
+        #assert isinstance(tree,ParsingTreeValue)
+        if not isinstance(tree,ParsingTreeValue):
+            return None
+        
+        fmt = tree.__xmlroot__.get('format')
+        if fmt:
+            #buf = fmt%data
+            formatter_name = tree.__xmlroot__.get('formatter')
+            if not formatter_name: formatter_name = 'python_percent'
+        else:
+            formatter_name = 'python_str'
+        
+        return DISPATCHER_FORMATTERS[formatter_name](tree)
+        
+    def __init__(self,tree):
+        raise NotImplementedError
+    
+    def write(cls,fmt,data):
+        raise NotImplementedError
+
+class Formatter_PYTHON_STR(Formatter):
+
+    def __init__(self,tree):
+        self.__tree__ = tree
+
+    def write(self,data):
+        return self.__tree__.to_str(data)
+
+class Formatter_PYTHON_PERCENT(Formatter):
+    
+    def __init__(self,tree):
+        self.__tree__ = tree
+        self.__fmt__ = tree.__xmlroot__.get('format')
+
+    def write(self,data):
+        return self.__fmt__%data
+
+class Formatter_FORTRANFORMAT(Formatter):
+
+    def __init__(self,tree):
+        import fortranformat as ff
+        self.__tree__ = tree
+        self.__fmt__ = tree.__xmlroot__.get('format')
+        self.__writer__ = ff.FortranRecordWriter(self.__fmt__)
+
+    def write(self,data):
+        return self.__writer__.write([data])
+
+# DATA ITERATOR
 class DataIterator():
     
     def __init__(self,data):
@@ -233,7 +288,7 @@ class ParsingTree:
     @classmethod
     def create_tree(cls,xmlroot,parent=None):
 
-        cls_ = DISPATCHER[xmlroot.tag]
+        cls_ = DISPATCHER_TAGS[xmlroot.tag]
         obj = cls_(xmlroot,parent)
 
         if issubclass(obj.__class__,ParsingTreeContainer):
@@ -267,6 +322,7 @@ class ParsingTree:
         self.__tail__ = strip_new_lines(xmlroot.tail)
         self.__varname__ = xmlroot.get('name')
         self.__children__ = [] # each child is a tag
+        self.__formatter__ = Formatter.create(self)
         
     def collect_grammar_from_children(self): 
         """
@@ -576,12 +632,7 @@ class ParsingTreeValue(ParsingTree):
             raise GenerationError('%s <> %s for %s'%(self_type,data_type,self.__tag__))
         # Do a type-specific check.
         self.check_data(data)
-        #buf = str(data)
-        fmt = self.__xmlroot__.get('format')
-        if fmt:
-            buf = fmt%data
-        else:
-            buf = self.to_str(data)
+        buf = self.__formatter__.write(data)
         _print('%s.genval>>>buf'%self.__class__.__name__,buf)
         return buf
         
@@ -904,7 +955,10 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
 
         return grammar
         
-    def collect_grammar_fixcol(self):
+    def collect_grammar_fixcol(self): 
+        
+        ###TODO: add a "comment" and "stop" regexes to parameters; comments must be also saved to list as strings
+        
         """
         Create a grammar from the specially formatted column-fixed Jeanny3 markup.
         The markup has the following format (types can be omitted):
@@ -1252,7 +1306,7 @@ class TreeGROUP(ParsingTreeAux):
         grammar_body = Group(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
 
-DISPATCHER = {
+DISPATCHER_TAGS = {
     'FLOAT': TreeFLOAT,
     'INT': TreeINT,
     'NUMBER': TreeNUMBER,
@@ -1282,6 +1336,12 @@ DISPATCHER = {
     'LEAVEWHITESPACE': TreeLEAVEWHITESPACE,
     'COMBINE': TreeCOMBINE,
     'GROUP': TreeGROUP,
+}
+
+DISPATCHER_FORMATTERS = {
+    'python_str': Formatter_PYTHON_STR,
+    'python_percent': Formatter_PYTHON_PERCENT,
+    'fortranformat': Formatter_FORTRANFORMAT,
 }
 
 # MAIN INTERFACE FUNCTIONS

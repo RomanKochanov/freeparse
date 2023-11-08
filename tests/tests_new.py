@@ -1044,6 +1044,54 @@ cooks:            12
 """
     return do_test(XML,BUFFER)
 
+def test_format_python_percent_omit():
+    XML = """
+<DICT>
+
+<FLOAT name="value" format="%7.3f"/>
+
+</DICT>
+"""
+    BUFFER = """123.012
+"""
+    return do_test(XML,BUFFER)
+
+def test_format_python_percent():
+    XML = """
+<DICT>
+
+<FLOAT name="value" format="%7.3f" formatter="python_percent"/>
+
+</DICT>
+"""
+    BUFFER = """123.012
+"""
+    return do_test(XML,BUFFER)
+
+def test_format_fortranformat_F():
+    XML = """
+<DICT>
+
+<FLOAT name="value" format="(F7.3)" formatter="fortranformat"/>
+
+</DICT>
+"""
+    BUFFER = """123.012
+"""
+    return do_test(XML,BUFFER)
+
+def test_format_fortranformat_E():
+    XML = """
+<DICT>
+
+<FLOAT name="value" format="(E9.3)" formatter="fortranformat"/>
+
+</DICT>
+"""
+    BUFFER = """0.023E-10
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
@@ -1063,6 +1111,10 @@ TEST_CASES = [
     test_fixcol,
     test_skipline,
     test_skiplines,
+    test_format_python_percent_omit,
+    test_format_python_percent,
+    test_format_fortranformat_F,
+    test_format_fortranformat_E
 ]
 
 def get_test_cases(func_names):
