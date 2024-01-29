@@ -748,7 +748,8 @@ class TreeWORD(ParsingTreeValue):
     def init_grammar(self):
         inp = self.__xmlroot__.get('input')
         #if not inp: inp = printables
-        if not inp: inp = pyparsing_unicode.printables
+        #if not inp: inp = pyparsing_unicode.printables
+        if not inp: inp = pp.unicode.printables
         return Word(inp)
     
     def get_type(self):
