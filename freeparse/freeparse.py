@@ -10,7 +10,8 @@ from itertools import cycle
 
 from pyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
-    Regex, Combine, LineStart, ParserElement, OneOrMore)
+    Regex, Combine, LineStart, ParserElement, OneOrMore,
+    White)
 
 import pyparsing.common as pyparsing_common
 
@@ -19,6 +20,8 @@ import xml.etree.ElementTree as ET
 SOL = LineStart()
 EOL = LineEnd()
 EMPTY = Empty()
+WHITE = White() # not only space, but tab + other whitespace symbols
+WHITESPACE = Literal(' ').leaveWhitespace() # only whitespace
 
 VARSPACE = {
     'VERBOSE': False,
@@ -1220,7 +1223,64 @@ class TreeSOL(ParsingTreeAux):
         g = SOL
         if grammar: g += grammar
         return g
+
+class TreeWhitespace(ParsingTreeAux): # TODO: Similar to TreeEOL. Refactor to a common parent class?
+
+    __nspaces__ = 1
+
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        g = WHITESPACE*self.__nspaces__
+        if grammar: g += grammar
+        return g
     
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        buf = ' '*self.__nspaces__
+        return buf
+
+class TreeWhitespace2(TreeWhitespace):
+    __nspaces__ = 2
+class TreeWhitespace3(TreeWhitespace):
+    __nspaces__ = 3
+class TreeWhitespace4(TreeWhitespace):
+    __nspaces__ = 4
+class TreeWhitespace5(TreeWhitespace):
+    __nspaces__ = 5
+class TreeWhitespace6(TreeWhitespace):
+    __nspaces__ = 6
+class TreeWhitespace7(TreeWhitespace):
+    __nspaces__ = 7
+class TreeWhitespace8(TreeWhitespace):
+    __nspaces__ = 8
+class TreeWhitespace9(TreeWhitespace):
+    __nspaces__ = 9
+
+class TreeWhitespaces(ParsingTreeAux):
+    
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        nspaces = self.__xmlroot__.get('n')
+        #if not nspaces: raise Exception('Invalid use of n in SS')
+        if nspaces:
+            nspaces = int(nspaces)
+            g = WHITESPACE*nspaces
+        else:
+            g = OneOrMore(WHITESPACE)
+        if grammar: g += grammar
+        return g
+
+    def genval(self,dataiter):
+        _print('%s.genval>>>tag'%self.__class__.__name__,self.__tag__)
+        nspaces = self.__xmlroot__.get('n')
+        #if not nspaces: raise Exception('Invalid use of n in SS')
+        if nspaces:
+            nspaces = int(nspaces)
+            buf = ' '*nspaces
+        else:
+            buf = ' '
+        return buf
+
 class TreeEOL_OLD(ParsingTreeAux):
 
     #def process(self,grammar_body,grammar_tail):
@@ -1272,6 +1332,12 @@ class TreeEOL5(TreeEOL):
     __neols__ = 5
 class TreeEOL6(TreeEOL):
     __neols__ = 6
+class TreeEOL7(TreeEOL):
+    __neols__ = 7
+class TreeEOL8(TreeEOL):
+    __neols__ = 8
+class TreeEOL9(TreeEOL):
+    __neols__ = 9
 
 class TreeEOLS(ParsingTreeAux):
     
@@ -1361,12 +1427,25 @@ DISPATCHER_TAGS = {
     'LIST': TreeLIST,
     'LOOP': TreeLOOP,
     'OPTIONAL': TreeOPTIONAL,
+    'S': TreeWhitespace,
+    'S2': TreeWhitespace2,
+    'S3': TreeWhitespace3,
+    'S4': TreeWhitespace4,
+    'S5': TreeWhitespace5,
+    'S6': TreeWhitespace6,
+    'S7': TreeWhitespace7,
+    'S8': TreeWhitespace8,
+    'S9': TreeWhitespace9,
+    'SS': TreeWhitespaces,
     'EOL': TreeEOL,
     'EOL2': TreeEOL2,
     'EOL3': TreeEOL3,
     'EOL4': TreeEOL4,
     'EOL5': TreeEOL5,
     'EOL6': TreeEOL6,
+    'EOL7': TreeEOL7,
+    'EOL8': TreeEOL8,
+    'EOL9': TreeEOL9,
     'EOLS': TreeEOLS,
     'LINEEND': TreeEOL,
     'SOL': TreeSOL,

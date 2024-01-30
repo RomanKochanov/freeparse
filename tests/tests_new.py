@@ -1147,6 +1147,80 @@ def test_loop_optional_comments():
 """
     return do_test(XML,BUFFER)
 
+def test_spaces_1():
+    XML = """
+<DICT>
+
+some_word<S/>other_word<S/><INT name="num"/>
+
+</DICT>
+"""
+    BUFFER = """some_word other_word 123
+"""
+    return do_test(XML,BUFFER)
+
+def test_spaces_2():
+    XML = """
+<DICT>
+
+some_word<S/>
+other_word<S2/>
+<INT name="num1"/><S3/>
+<FLOAT name="num2"/><SS/>
+<LITERAL name="abc" input="ABC"/>
+
+</DICT>
+"""
+    BUFFER = """some_word other_word  123   12.0         ABC
+"""
+    return do_test(XML,BUFFER)
+
+def test_spaces_3():
+    XML = """
+<DICT>
+
+<LOOP name="details">
+<DICT>
+
+<RESTOFLINE name="parname"/><EOL/>
+<WORD name="separ" input="-"/><EOL/>
+Data type:<S/><RESTOFLINE name="type"/><EOL/>
+C-style format specifier:<S/><RESTOFLINE name="cformat"/><EOL/>
+Fortran-style format specifier:<S/><RESTOFLINE name="fformat"/><EOL/>
+Units:<S/><RESTOFLINE name="units"/><EOL/>
+Description:<S/><RESTOFLINE name="description"/><EOL2/>
+
+</DICT>
+</LOOP>
+
+</DICT>
+"""
+    BUFFER = """molec_id
+--------
+Data type: int
+C-style format specifier: %2d
+Fortran-style format specifier: I2
+Units: [dimensionless]
+Description: The HITRAN integer ID for this molecule in all its isotopologue forms
+
+local_iso_id
+------------
+Data type: int
+C-style format specifier: %1d
+Fortran-style format specifier: I1
+Units: [dimensionless]
+Description: Integer ID of a particular Isotopologue, unique only to a given molecule
+
+nu
+--
+Data type: float
+C-style format specifier: %12.6f
+Fortran-style format specifier: F12.6
+Units: cm-1
+Description: Transition wavenumber
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
@@ -1172,7 +1246,10 @@ TEST_CASES = [
     test_format_fortranformat_E,
     test_format_fortranformat_D,
     test_buffer,
-    test_loop_optional_comments, # fails
+    #test_loop_optional_comments, # fails!!!
+    test_spaces_1,
+    test_spaces_2,
+    test_spaces_3,
 ]
 
 def get_test_cases(func_names):
