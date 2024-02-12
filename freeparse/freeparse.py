@@ -1028,10 +1028,21 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         f = io.StringIO(self.__text__)
         buf = self.__buffer__
                 
-        def trigger_factory(buf,types):
+        def trigger_factory(buf,types,masks):
             def add_to_buffer(tokens):         
                 dct = tokens.as_dict()
-                item = {key:types[key](dct[key]) for key in dct}
+                #item = {key:types[key](dct[key]) for key in dct} # without exception handling
+                item = {}
+                for key in dct: # with exception handling
+                    try:
+                        val = types[key](dct[key])
+                    except ValueError as e:
+                        mask = masks[key]
+                        if mask is None or dct[key].strip()!=mask:
+                            raise(e)
+                        else:
+                            val = mask
+                    item[key] = val
                 buf.insert(None,item)
             return add_to_buffer
     
@@ -1055,7 +1066,13 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             HEAD[token]['token'] = token
             HEAD[token]['name'] = vals[1]
             HEAD[token]['type'] = vtype # vtype
-                        
+            # process masks
+            try:
+                mask = vals[3]                
+            except IndexError:
+                mask = None
+            HEAD[token]['mask'] = mask                        
+            
         # Get tokenized mark-up.
         for line in f:
             widths = line.rstrip(); break # readline doesn't work because of the "Mixing iteration and read methods"
@@ -1075,6 +1092,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         # create a list of grammars and attach triggers
         regex = ''
         types = {}
+        masks = {}
         for token in HEAD:      
             type_ = HEAD[token]['type']
             key = HEAD[token]['name']
@@ -1083,6 +1101,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             length = i_end-i_start
             regex += '(?P<%s>.{%d})'%(key,length)
             types[key] = type_
+            masks[key] = HEAD[token]['mask']
             _print('======================================')
             _print('collect_grammar_fixcol>>>loop>>token',token)
             _print('collect_grammar_fixcol>>>loop>>key',key)
@@ -1096,7 +1115,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #regex = '^' + regex
         _print('collect_grammar_fixcol>>>loop>>regex',regex)
             
-        add_to_buffer = trigger_factory(buf,types) # produce with factory (proper closures!!)
+        add_to_buffer = trigger_factory(buf,types,masks) # produce with factory (proper closures!!)
             
         # make a single grammar for body
         grammar_body = Regex(regex)

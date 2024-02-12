@@ -1221,6 +1221,63 @@ Description: Transition wavenumber
 """
     return do_test(XML,BUFFER)
 
+def test_fixcol_asterisc():
+    XML = """
+<DICT>
+
+THIS IS A HEADER<EOL2/>
+
+    Name          Parameter             Estimate         Error    Sensit.   Est/Err Inflat.  Weight Tags  Gradient    Step
+           R M1 M2 M3  D  1  2  3  L  J
+
+<EOL/>
+
+<FIXCOL name="parameters">
+//HEADER
+0 name STR
+1 R INT
+2 M1 INT
+3 M2 INT
+4 M3 INT
+5 D INT
+6 A1 INT
+7 A2 INT
+8 A3 INT
+9 L INT
+A J INT
+B estimate FLOAT
+C error FLOAT
+D sensit FLOAT
+E est_err FLOAT
+F inflat FLOAT *******
+G weight FLOAT
+H tags STR
+I gradient FLOAT
+J step FLOAT
+
+//DATA
+0_________1_2__3__4__5__6__7__8__9__A__B_________________C________D________E_________F_______G________H__I_________J________
+<!--
+    Name          Parameter             Estimate         Error    Sensit.   Est/Err Inflat.  Weight Tags  Gradient    Step
+           R M1 M2 M3  D  1  2  3  L  J
+ O1        0  0  0  0  0  1  0  0  0  0   1353.674539     0.35E-03 0.42E-09   0.4E+07 ******* 0.55E-01   -0.57E+06  0.14E+04
+ Z1112     0  0  0  0  0  3  1  0  0  0  0.1444336305E-02 0.33E-04 0.20E-10   0.4E+02 6.5E-01 0.71E-01   -0.42E+07  0.14E-02
+ W11122    0  0  0  0  0  3  2  0  0  0 -0.1701685787E-05 0.43E-05 0.45E-11   0.4E+00 ******* 0.60E-04 T  0.85E+07 -0.17E-05
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+
+    Name          Parameter             Estimate         Error    Sensit.   Est/Err Inflat.  Weight Tags  Gradient    Step
+           R M1 M2 M3  D  1  2  3  L  J
+ O1        0  0  0  0  0  1  0  0  0  0   1353.674539     0.35E-03 0.42E-09   0.4E+07 ******* 0.55E-01   -0.57E+06  0.14E+04
+ Z1112     0  0  0  0  0  3  1  0  0  0  0.1444336305E-02 0.33E-04 0.20E-10   0.4E+02 6.5E-01 0.71E-01   -0.42E+07  0.14E-02
+ W11122    0  0  0  0  0  3  2  0  0  0 -0.1701685787E-05 0.43E-05 0.45E-11   0.4E+00 ******* 0.60E-04 T  0.85E+07 -0.17E-05
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
@@ -1250,6 +1307,7 @@ TEST_CASES = [
     test_spaces_1,
     test_spaces_2,
     test_spaces_3,
+    test_fixcol_asterisc,
 ]
 
 def get_test_cases(func_names):
