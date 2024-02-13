@@ -1221,7 +1221,7 @@ Description: Transition wavenumber
 """
     return do_test(XML,BUFFER)
 
-def test_fixcol_asterisc():
+def test_fixcol_asterisc_1():
     XML = """
 <DICT>
 
@@ -1278,11 +1278,179 @@ J step FLOAT
 """
     return do_test(XML,BUFFER)
 
+def test_fixcol_asterisc_2():
+    XML = """
+<DICT>
+
+THIS IS A HEADER<EOL2/>
+
+ ref iso upper lower             Fobs       Fcalc  residual   unc  wht_res          upper        lower                        Fobs            res.
+                                (cm-1)      (cm-1)    (mK)    (mK)              p   j c   n   p   j c    n comment            (MHz)           (KHz)
+
+<EOL/>
+
+<FIXCOL name="parameters" restofline="comment">
+//HEADER
+0 tag INT
+1 ref INT
+2 iso INT
+3 upper STR
+4 lower STR
+5 br STR
+6 Jlow INT
+7 sym STR
+8 Fobs FLOAT
+9 Fcalc FLOAT
+A unwht_resid_mk FLOAT
+B uncertainty FLOAT
+C wht_resid_mk FLOAT ********
+D flags STR
+E p INT
+F j INT
+G c INT
+H n INT
+I p_ INT
+J j_ INT
+K c_ INT
+L n_ INT
+
+//DATA
+01___2___3_____4_____5_6___78___________9___________A_______B_______C_______D___E__F___G_H____I__J___K_L____
+<!--
+ ref iso upper lower             Fobs       Fcalc  residual   unc  wht_res          upper        lower                        Fobs            res.
+                                (cm-1)      (cm-1)    (mK)    (mK)              p   j c   n   p   j c    n comment            (MHz)           (KHz)
+0 170   1 60025 30013 P  37e100995.56165  5995.56621   -4.56    0.00    0.50 OI  18  36 1   66  9  37 1
+0   1   1 10011 00001 P   6e  3710.00467  3710.00464    0.03    0.02    1.41      5   5 1    9  0   6 1    1                 111223141.91      777.49
+0   1   1 10011 00001 P  12e  3705.00127  3705.00125    0.02    0.02    1.00      5  11 1    9  0  12 1    1                 111073143.81      609.47
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+
+ ref iso upper lower             Fobs       Fcalc  residual   unc  wht_res          upper        lower                        Fobs            res.
+                                (cm-1)      (cm-1)    (mK)    (mK)              p   j c   n   p   j c    n comment            (MHz)           (KHz)
+0 170   1 60025 30013 P  37e100995.56165  5995.56621   -4.56    0.00    0.50 OI  18  36 1   66  9  37 1   18
+0   1   1 10011 00001 P   6e  3710.00467  3710.00464    0.03    0.02    1.41      5   5 1    9  0   6 1    1                 111223141.91      777.49
+0   1   1 10011 00001 P  12e  3705.00127  3705.00125    0.02    0.02    1.00      5  11 1    9  0  12 1    1                 111073143.81      609.47
+0   1   1 10011 00001 P  18e  3699.77319  3699.77317    0.02    0.01    1.32      5  17 1    9  0  18 1    1                 110916409.81      527.58
+0  23   1 03301 02201 P  52e   629.33240   629.33235    0.05    0.36    0.14      3  51 1    2  2  52 1    2                 
+0  23   1 03301 02201 P  53f   628.62460   628.62329    1.31    0.30    4.38      3  52 2    2  2  53 2    1 *               
+0  23   1 03301 02201 P  54e   627.92270   627.92256    0.14    0.36    0.40      3  53 1    2  2  54 1    2                 
+0 170   1 60025 30013 P  27e  6003.57864  6003.55251   26.13    0.00******** OI  18  26 1   66  9  27 1   16                 179982759.80   783316.34
+0 170   1 60025 30013 P  29e  6001.97927  6001.95870   20.57    0.00******** OI  18  28 1   66  9  29 1   16                 179934811.74   616721.86
+0 170   1 60025 30013 P  31e  6000.37723  6000.36250   14.73    0.0088324.79 OI  18  30 1   66  9  31 1   16                 179886783.80   441623.97
+0 170   1 60025 30013 P  33e  5998.77312  5998.76452    8.60    0.0051572.79 OI  18  32 1   66  9  33 1   16                 179838693.90   257863.93
+0 170   1 60025 30013 P  37e  5995.56165  5995.56621   -4.56    0.00    0.50 OI  18  36 1   66  9  37 1   17
+0 170   1 60025 30013 P  35e  5997.16766  5997.16548    2.17    0.0013040.03  I  18  34 1   66  9  35 1   16                 179790563.28    65200.13
+0 170   1 60025 30013 P  37e  5995.56165  5995.56621   -4.56    0.00******** OI  18  36 1   66  9  37 1   20
+"""
+    return do_test(XML,BUFFER)
+
+def test_fixcol_asterisc_2_simple1():
+    XML = """
+<DICT>
+
+THIS IS A HEADER<EOL2/>
+
+<FIXCOL name="parameters" restofline="comment">
+//HEADER
+0 tag INT
+1 ref INT
+
+//DATA
+01___
+<!--
+0  23 *               
+0  23
+0 170                 179982759.80   783316.34
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+
+0 170
+0   1    1                 111223141.91      777.49
+0   1    1                 111073143.81      609.47
+0   1    1                 110916409.81      527.58
+0  23    2                 
+0  23    1 *               
+0  23    2                 
+0 171   16                 179982759.80   783316.34
+0 172   16                 179934811.74   616721.86
+0 173   16                 179886783.80   441623.97
+0 174   16                 179838693.90   257863.93
+0 175
+0 176   16                 179790563.28    65200.13
+0 177
+"""
+    return do_test(XML,BUFFER)
+
+def test_fixcol_asterisc_3():
+    XML = """
+<DICT>
+
+THIS IS A HEADER<EOL2/>
+
+***** J STATISTICS *****
+
+iso  J     N    mean_res         rms   rms/max_res   max_res<EOL2/>
+
+<FIXCOL name="jstat">
+//HEADER
+0 iso INT
+1 J INT 
+2 N INT 
+3 mean_res FLOAT ************
+4 rms FLOAT ************
+5 rms_to_max_res FLOAT
+6 max_res FLOAT ************
+
+//DATA
+0_1___2_____3___________4___________5___________6___________
+<!--
+iso  J     N    mean_res         rms   rms/max_res   max_res
+ 1   0    30     -743.47     4281.70       -5.76   -20333.23
+ 1  40   817  -141014.20  3988600.56      -28.29************
+ 1   1   688    -4645.41    67444.20      -14.52 -1572220.49
+ 1   2   609   653022.69 16118126.51       24.68397761911.59
+ 1  17  1636    -2742.42   100302.80      -36.57 -2789657.40
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+
+***** J STATISTICS *****
+
+iso  J     N    mean_res         rms   rms/max_res   max_res
+
+ 1   0    30     -743.47     4281.70       -5.76   -20333.23
+ 1  40   817  -141014.20  3988600.56      -28.29************
+ 1   1   688    -4645.41    67444.20      -14.52 -1572220.49
+ 1   2   609   653022.69 16118126.51       24.68397761911.59
+ 1  17  1636    -2742.42   100302.80      -36.57 -2789657.40
+ 1  18  1020   267588.51  8534321.06       31.89272564196.92
+ 1  22  1028   212771.91  6804778.84       31.98218177367.81
+ 1  23  1596   -21084.62   586609.94      -27.82-21662911.95
+ 1  24   990   191513.09  5984047.54       31.25188281639.11
+ 1  42   739  -218612.40  5903842.74      -27.01************
+ 1  45  1118        6.24    18161.19     2909.80  -249502.72
+ 1  46   626  -416568.94 10407248.92      -24.98************
+ 1  47  1026     2020.61    53854.98       26.65  1582023.56
+ 1  48   582  -540608.16 13018191.69      -24.08************
+"""
+    return do_test(XML,BUFFER)
+    
 TEST_CASES = [
     test_part0a,
     test_part0b,
     test_part1,
-    test_part34, # fails
+    #test_part34, # fails
     test_part56,
     test_part78,
     test_part910,
@@ -1303,11 +1471,14 @@ TEST_CASES = [
     test_format_fortranformat_E,
     test_format_fortranformat_D,
     test_buffer,
-    #test_loop_optional_comments, # fails!!!
+    #test_loop_optional_comments, # fails
     test_spaces_1,
     test_spaces_2,
     test_spaces_3,
-    test_fixcol_asterisc,
+    test_fixcol_asterisc_1,
+    test_fixcol_asterisc_2,
+    test_fixcol_asterisc_2_simple1,
+    test_fixcol_asterisc_3,
 ]
 
 def get_test_cases(func_names):

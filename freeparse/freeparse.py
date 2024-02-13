@@ -17,6 +17,8 @@ import pyparsing.common as pyparsing_common
 
 import xml.etree.ElementTree as ET
 
+#ParserElement.enablePackrat() # enable caching
+
 SOL = LineStart()
 EOL = LineEnd()
 EMPTY = Empty()
@@ -1002,7 +1004,202 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         if VARSPACE['DEBUG'] and grammar: grammar.set_debug()
 
         return grammar
+
+    def collect_grammar_fixcol(self): 
         
+        ###TODO: add a "comment" and "stop" regexes to parameters; comments must be also saved to list as strings
+        
+        """
+        Create a grammar from the specially formatted column-fixed Jeanny3 markup.
+        The markup has the following format (types can be omitted):
+        
+        //HEADER
+        0 Column0 Type0
+        1 Column1 Type1
+        ...
+        N ColumnN TypeN
+        
+        //DATA
+        0___1___2____.....N______
+        
+        In the data buffer, comments are marked with hashtag (#) and ignored.
+        """
+        TYPES = {'float':float,'int':int,'str':str}        
+                
+        # initialization
+        f = io.StringIO(self.__text__)
+        buf = self.__buffer__
+                
+        def trigger_factory(buf,head,restofline):
+            def add_to_buffer(tokens): 
+                line = tokens[0]        
+                item = {}
+                for token in head: 
+                    head_ = head[token]
+                    name = head_['name']
+                    type_ = head_['type']
+                    i_start = head_['i_start']
+                    i_end = head_['i_end']
+                    s = line[i_start:i_end]
+                    try:
+                        val = type_(s)
+                    except ValueError as e:
+                        mask = head_['mask']
+                        if mask is None or s.strip()!=mask:
+                            raise(e)
+                        else:
+                            val = mask
+                    item[name] = val
+                if restofline is not None:
+                    item[restofline] = line[i_end:]
+                buf.insert(None,item)
+            return add_to_buffer
+    
+        # Search for //HEADER section.    
+        for line in f:
+            if '//HEADER' in line: break
+    
+        # Scan //HEADER section.     
+        HEAD = {}        
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            if line[0]=='#': continue
+            if '//DATA' in line: break
+            vals = [_ for _ in line.split() if _]
+            token = vals[0]
+            if token in HEAD:
+                raise Exception('ERROR: duplicate key was found: %s'%vals[0])
+            vtype = TYPES[vals[2].lower()] if len(vals)>2 else str           
+            HEAD[token] = {}
+            HEAD[token]['token'] = token
+            HEAD[token]['name'] = vals[1]
+            HEAD[token]['type'] = vtype # vtype
+            # process masks
+            try:
+                mask = vals[3]                
+            except IndexError:
+                mask = None
+            HEAD[token]['mask'] = mask                        
+            
+        # Get tokenized mark-up.
+        for line in f:
+            widths = line.rstrip(); break # readline doesn't work because of the "Mixing iteration and read methods"
+        #matches = re.finditer('([^_]+_*)',widths) # fails when no underscore between columns tokens
+        matches = re.finditer('([^_]_*)',widths)
+        tokens = []; names = []; line_length = 0
+        for match in matches:
+            i_start = match.start()
+            i_end = match.end()
+            token = re.sub('_','',widths[i_start:i_end])
+            if token not in HEAD: continue                
+            tokens.append(token)
+            names.append(HEAD[token]['name'])
+            HEAD[token]['i_start'] = i_start
+            HEAD[token]['i_end'] = i_end
+            line_length += i_end-i_start
+        #markup = re.findall('([^_]+_*)',widths) # doesn't give indexes
+        
+        # create a simpler regular expression
+        regex = '.{%d,}'%line_length
+        
+        #regex = '^' + regex + '$'
+        #regex = '^' + regex
+        _print('collect_grammar_fixcol>>>loop>>regex',regex)
+
+        restofline = self.__xmlroot__.get('restofline')
+            
+        add_to_buffer = trigger_factory(buf,HEAD,restofline) # produce with factory (proper closures!!)        
+        
+        # make a single grammar for body
+        grammar_body = Regex(regex)
+
+        grammar_body.setParseAction(add_to_buffer)
+
+        _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
+        
+        if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
+        
+        # combine grammar body to weed out extra spaces
+        #grammar_body = Combine(grammar_body) 
+        #_print('collect_grammar_fixcol>>>Combine(grammar_body)',grammar_body)
+        
+        #grammar_body = LineStart() + grammar_body + LineEnd()
+        #grammar_body = LineEnd() + grammar_body
+        
+        #grammar_body = grammar_body.leaveWhitespace() # THIS IS NECESSARY!!!
+
+        #grammar_body = ZeroOrMore(LineEnd()+grammar_body).leaveWhitespace()
+        
+        #grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace() # WORKS, BUT NOT WITH LEADING EOLS
+        #grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-UNAWARE PARSING
+        
+        grammar_body = ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
+                
+        # create a tail grammar, if present
+        if self.__tail__ is not None:
+            grammar_tail = self.__tail__.strip()
+        else:
+            grammar_tail = None
+            
+        _print('collect_grammar>>>grammar_tail',grammar_tail)
+        
+        # save for using in generate
+        self.__types__ = TYPES
+        self.__head__ = HEAD
+                        
+        if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
+                        
+        return grammar_body,grammar_tail 
+
+    def process(self,grammar_body,grammar_tail):
+        return sum_grammars(grammar_body,grammar_tail)
+        
+    #def generate(self,data):
+    def genval(self,dataiter):
+        
+        data = dataiter.getall()
+        
+        TYPES = self.__types__
+        HEAD = self.__head__
+        
+        rol_name = self.__xmlroot__.get('restofline')
+        
+        #FORMATS = {str:'%%%ds',int:'%%%dd',float:'%%%de'}
+        
+        tokens = HEAD.keys()
+        names = [HEAD[t]['name'] for t in tokens]
+        
+        buf = ''
+        for item in data:
+            vals = [item[name] for name in names]
+            line = ''
+            line_length = 0
+            for val,token in zip(vals,tokens):
+                name = HEAD[token]['name']
+                i_start = HEAD[token]['i_start']
+                i_end = HEAD[token]['i_end']
+                #type_ = TYPES[name]
+                length = i_end-i_start
+                b = '%%%ds'%length%str(val)
+                assert len(b)==length, 'len("%s")=%d!=%d'%(b,len(b),length)
+                buf += b
+            # append comment if any:
+            if rol_name is not None:
+                buf += item[rol_name]
+            buf += '\n'
+            
+        if self.__tail__:
+            #tail = process_tail(self.__tail__)
+            _print('TreeFIXCOL.generate>>>process_tail(self.__tail__)',tail,type(tail))
+            buf += tail
+            
+        return buf
+
+class TreeFIXCOL2(TreeFIXCOL): # TODO: Make it a child ParsingTreeCollection (needs some refactoring!)
+    
+    """ OLD LEGACY VERSION, WILL BE DELETED """
+
     def collect_grammar_fixcol(self): 
         
         ###TODO: add a "comment" and "stop" regexes to parameters; comments must be also saved to list as strings
@@ -1030,7 +1227,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
                 
         def trigger_factory(buf,types,masks):
             def add_to_buffer(tokens):         
-                dct = tokens.as_dict()
+                dct = tokens.as_dict()                
                 #item = {key:types[key](dct[key]) for key in dct} # without exception handling
                 item = {}
                 for key in dct: # with exception handling
@@ -1076,7 +1273,8 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         # Get tokenized mark-up.
         for line in f:
             widths = line.rstrip(); break # readline doesn't work because of the "Mixing iteration and read methods"
-        matches = re.finditer('([^_]+_*)',widths)
+        #matches = re.finditer('([^_]+_*)',widths) # fails when no underscore between columns tokens
+        matches = re.finditer('([^_]_*)',widths)
         tokens = []; names = []
         for match in matches:
             i_start = match.start()
@@ -1096,6 +1294,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         for token in HEAD:      
             type_ = HEAD[token]['type']
             key = HEAD[token]['name']
+            #print(token,'>>>',HEAD[token])
             i_start = HEAD[token]['i_start']
             i_end = HEAD[token]['i_end']
             length = i_end-i_start
@@ -1114,12 +1313,22 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #regex = '^' + regex + '$'
         #regex = '^' + regex
         _print('collect_grammar_fixcol>>>loop>>regex',regex)
+
+        rol_name = self.__xmlroot__.get('restofline')
             
-        add_to_buffer = trigger_factory(buf,types,masks) # produce with factory (proper closures!!)
+        if rol_name is not None:
+            types[rol_name] = str
             
+        add_to_buffer = trigger_factory(buf,types,masks) # produce with factory (proper closures!!)        
+        
         # make a single grammar for body
         grammar_body = Regex(regex)
-        grammar_body.setParseAction(add_to_buffer)
+
+        if rol_name is None: # ignore rest of line
+            grammar_body = grammar_body.setParseAction(add_to_buffer) + restOfLine()
+        else:
+            grammar_body = (grammar_body + restOfLine(rol_name)).setParseAction(add_to_buffer)
+
         _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
         
         if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
@@ -1154,46 +1363,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
                         
         if VARSPACE['DEBUG'] and grammar_body: grammar_body.set_debug()
                         
-        return grammar_body,grammar_tail        
-
-    def process(self,grammar_body,grammar_tail):
-        return sum_grammars(grammar_body,grammar_tail)
-        
-    #def generate(self,data):
-    def genval(self,dataiter):
-        
-        data = dataiter.getall()
-        
-        TYPES = self.__types__
-        HEAD = self.__head__
-        
-        #FORMATS = {str:'%%%ds',int:'%%%dd',float:'%%%de'}
-        
-        tokens = HEAD.keys()
-        names = [HEAD[t]['name'] for t in tokens]
-        
-        buf = ''
-        for item in data:
-            vals = [item[name] for name in names]
-            line = ''
-            line_length = 0
-            for val,token in zip(vals,tokens):
-                name = HEAD[token]['name']
-                i_start = HEAD[token]['i_start']
-                i_end = HEAD[token]['i_end']
-                #type_ = TYPES[name]
-                length = i_end-i_start
-                b = '%%%ds'%length%str(val)
-                assert len(b)==length, 'len("%s")=%d!=%d'%(b,len(b),length)
-                buf += b
-            buf += '\n'
-            
-        if self.__tail__:
-            #tail = process_tail(self.__tail__)
-            _print('TreeFIXCOL.generate>>>process_tail(self.__tail__)',tail,type(tail))
-            buf += tail
-            
-        return buf
+        return grammar_body,grammar_tail     
 
 class ParsingTreeAux(ParsingTree):
     """
@@ -1477,6 +1647,7 @@ DISPATCHER_TAGS = {
     'REGEX': TreeREGEX,
     'TEXT': TreeTEXT,
     'FIXCOL': TreeFIXCOL,
+    'FIXCOL2': TreeFIXCOL2, # legacy (slow)
     'LEAVEWHITESPACE': TreeLEAVEWHITESPACE,
     'COMBINE': TreeCOMBINE,
     'GROUP': TreeGROUP,
