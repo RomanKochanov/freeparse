@@ -704,6 +704,16 @@ class TreeNUMBER(ParsingTreeValue):
         if typ: return self.__class__.TYPES[typ.lower()]
         return float
 
+class TreeFORTRAN(TreeNUMBER):
+    
+    """ Fortran-formatted numbers, e.g. 1.e-10, 1.2-307 etc... """
+    
+    def init_grammar(self):
+        return Regex('[+-]?(?:\.|\d+\.?)\d*([de][+-]?\d+)?(_[a-z\d]+)?')
+        
+    def get_type(self): # TODO!!!
+        raise NotImplementedError
+    
 class TreeBUFFER(ParsingTreeValue):
     
     TYPES = {
@@ -1610,6 +1620,7 @@ DISPATCHER_TAGS = {
     'FLOAT': TreeFLOAT,
     'INT': TreeINT,
     'NUMBER': TreeNUMBER,
+    'FORTRAN': TreeFORTRAN,
     'STR': TreeSTR,
     'BUFFER': TreeBUFFER,
     'DICT': TreeDICT,
