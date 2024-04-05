@@ -549,11 +549,11 @@ class ParsingTree:
     def create_grammar(self):
         self.__grammar__ = self.getGrammar()
         
-    def parse_string(self,buf):
+    def parse_string(self,buf,parse_all=False):
         self.clear_buffer()
-        self.grammar.parse_string(buf)
+        self.grammar.parse_string(buf,parse_all=parse_all)
         
-    def parse_file(self,fileobj,encoding='utf-8'):
+    def parse_file(self,fileobj,encoding='utf-8',parse_all=False):
         enc = encoding
         if type(fileobj) is str:
             with open(fileobj,encoding=enc) as f:
@@ -562,7 +562,7 @@ class ParsingTree:
             enc_ = fileobj.encoding
             assert enc_==enc,'%s <> %s'%(enc_,enc)
             buf = fileobj.read()
-        self.parse_string(buf)
+        self.parse_string(buf,parse_all=parse_all)
                 
     def getGrammar(self):
         raise NotImplementedError

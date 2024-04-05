@@ -37,7 +37,7 @@ def do_test1(XML,BUFFER):
     print('\n-----------------------------------')
     print('----- SEARCHING STRING -------------')
     print('------------------------------------\n')
-    res = grammar.parse_string(BUFFER)
+    res = grammar.parse_string(BUFFER,parse_all=VARSPACE['parse_all'])
     # print results
     print('------------------------------- parse result')
     print(res)
@@ -81,7 +81,7 @@ def do_test2(XML,BUFFER):
     print('\n-----------------------------------')
     print('----- SEARCHING STRING -------------')
     print('------------------------------------\n')
-    res = grammar.parse_string(BUFFER)
+    res = grammar.parse_string(BUFFER,parse_all=VARSPACE['parse_all'])
     # print results
     print('------------------------------- parse result')
     print(res)
@@ -130,7 +130,7 @@ def do_test2(XML,BUFFER):
     print('------------------------------------\n')
     # Parse the newly generated raw file.
     #parse_tree = ParsingTree.create_tree(xmlroot)
-    parse_tree.parse_string(rawbuf)
+    parse_tree.parse_string(rawbuf,parse_all=VARSPACE['parse_all'])
     data_ = parse_tree.get_data()
     #print('DATA')
     #print(data_)
@@ -1520,6 +1520,10 @@ if __name__=='__main__':
         action='store_const', const=True, default=False,
         help='Grammar debugging mode')
 
+    parser.add_argument('--parse-all', dest='parse_all',
+        action='store_const', const=True, default=False,
+        help='Enabling PARSE_ALL mode')
+
     parser.add_argument('--cases', nargs='*', type=str, 
         help='List of test cases (functions)')
         
@@ -1528,6 +1532,11 @@ if __name__=='__main__':
     VARSPACE['VERBOSE'] = args.verbose
     VARSPACE['DEBUG'] = args.debug
     VARSPACE['BREAKPOINTS'] = args.breakpoints    
+        
+    VARSPACE['parse_all'] = args.parse_all
+    
+    if args.parse_all:
+        print('ATTENTION: PARSE_ALL MODE ENABLED')
         
     test_cases = get_test_cases(args.cases)
         
