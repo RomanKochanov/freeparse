@@ -11,7 +11,7 @@ from itertools import cycle
 from pyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
     Regex, Combine, LineStart, ParserElement, OneOrMore,
-    White)
+    White, StringEnd)
 
 import pyparsing.common as pyparsing_common
 
@@ -24,6 +24,7 @@ EOL = LineEnd()
 EMPTY = Empty()
 WHITE = White() # not only space, but tab + other whitespace symbols
 WHITESPACE = Literal(' ').leaveWhitespace() # only whitespace
+EOF = StringEnd()
 
 VARSPACE = {
     'VERBOSE': False,
@@ -1423,6 +1424,14 @@ class TreeSOL(ParsingTreeAux):
         if grammar: g += grammar
         return g
 
+class TreeEOF(ParsingTreeAux):
+
+    def process(self,grammar_body,grammar_tail):
+        grammar = sum_grammars(grammar_body,grammar_tail)
+        g = EOF
+        if grammar: g += grammar
+        return g
+
 class TreeWhitespace(ParsingTreeAux): # TODO: Similar to TreeEOL. Refactor to a common parent class?
 
     __nspaces__ = 1
@@ -1562,7 +1571,7 @@ class TreeEOLS(ParsingTreeAux):
         else:
             buf = '\n'
         return buf
-    
+
 class TreeSKIPLINE(ParsingTreeAux):
     
     def process(self,grammar_body,grammar_tail):
@@ -1650,6 +1659,7 @@ DISPATCHER_TAGS = {
     'LINEEND': TreeEOL,
     'SOL': TreeSOL,
     'LINESTART': TreeSOL,
+    'EOF': TreeEOF,
     'SKIPLINE': TreeSKIPLINE,
     'SKIPLINES': TreeSKIPLINES,
     'LITERAL': TreeLITERAL,
