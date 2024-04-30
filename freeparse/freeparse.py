@@ -1,19 +1,20 @@
 import io
 import re
 import json
-import pyparsing as pp
+import cPyparsing as pp
 
 from copy import deepcopy
 
 from functools import reduce
 from itertools import cycle
 
-from pyparsing import (LineEnd, Literal, Empty, Word, 
+from cPyparsing import (LineEnd, Literal, Empty, Word, 
     printables, ZeroOrMore, Optional, Group, restOfLine, 
     Regex, Combine, LineStart, ParserElement, OneOrMore,
     White, StringEnd)
 
-import pyparsing.common as pyparsing_common
+#import pyparsing.common as pyparsing_common
+from cPyparsing import pyparsing_common
 
 import xml.etree.ElementTree as ET
 
@@ -33,7 +34,8 @@ VARSPACE = {
 }
 
 # Set default whitespace characters.
-ParserElement.set_default_whitespace_chars(' \t')
+#ParserElement.set_default_whitespace_chars(' \t')
+ParserElement.setDefaultWhitespaceChars(' \t')
 #ParserElement.set_default_whitespace_chars(' \t\n') # default
 
 def _print(*args):
@@ -60,8 +62,8 @@ def convert_to_float(tokens):
 class pyparsing_common_(pyparsing_common):    
     sci_real = (
         Regex(r"[+-]?(?:\d+(?:[eEdD][+-]?\d+)|(?:\d+\.\d*|\.\d+)(?:[eEdD][+-]?\d+)?)")
-        .set_name("real number with scientific notation")
-        .set_parse_action(convert_to_float)
+        .setName("real number with scientific notation")
+        .setParseAction(convert_to_float)
     )
 
 #ppc = pyparsing_common # default set of parsers
@@ -552,7 +554,8 @@ class ParsingTree:
         
     def parse_string(self,buf,parse_all=False):
         self.clear_buffer()
-        self.grammar.parse_string(buf,parse_all=parse_all)
+        #self.grammar.parse_string(buf,parse_all=parse_all)
+        self.grammar.parseString(buf)
         
     def parse_file(self,fileobj,encoding='utf-8',parse_all=False):
         enc = encoding

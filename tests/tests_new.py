@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 
@@ -31,8 +32,8 @@ def do_test1(XML,BUFFER):
     print('------------------------------------\n')
     grammar = parse_tree.getGrammar()
     # create railroad diagram
-    grammar.create_diagram("grammar.html",
-        show_results_names=True,show_groups=True,vertical=3)
+    #grammar.create_diagram("grammar.html",
+    #    show_results_names=True,show_groups=True,vertical=3)
     # parse buffer
     print('\n-----------------------------------')
     print('----- SEARCHING STRING -------------')
@@ -75,13 +76,14 @@ def do_test2(XML,BUFFER):
     print('------------------------------------\n')
     grammar = parse_tree.getGrammar()
     # create railroad diagram
-    grammar.create_diagram("grammar.html",
-        show_results_names=True,show_groups=True,vertical=3)
+    #grammar.create_diagram("grammar.html",
+    #    show_results_names=True,show_groups=True,vertical=3)
     # parse buffer
     print('\n-----------------------------------')
     print('----- SEARCHING STRING -------------')
     print('------------------------------------\n')
-    res = grammar.parse_string(BUFFER,parse_all=VARSPACE['parse_all'])
+    #res = grammar.parseString(BUFFER,parse_all=VARSPACE['parse_all'])
+    res = grammar.parseString(BUFFER)
     # print results
     print('------------------------------- parse result')
     print(res)
@@ -1493,7 +1495,8 @@ def get_test_cases(func_names):
 def do_tests(test_cases,testgroup=None,session_name=None): # test all functions    
     
     if testgroup is None:
-        testgroup = __file__
+        filestem,_ = os.path.splitext(__file__)
+        testgroup = filestem
 
     session_uuid = uuid()
     

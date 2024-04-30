@@ -24,7 +24,7 @@ def save_test_results(testgroup,session_name,session_uuid,case,elapsed_time,test
 
 def append_summary_collection(testgroup,session_name,session_uuid,case,elapsed_time,test_results):
     col = Collection()
-    path_to_summary = os.path.join(BASEDIR,'summary.csv')
+    path_to_summary = os.path.join(BASEDIR,testgroup,'summary.csv')
     if os.path.isfile(path_to_summary):
         col.import_csv(path_to_summary)
     item = {'testgroup':testgroup,'session_name':session_name,
