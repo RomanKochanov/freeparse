@@ -9,6 +9,10 @@ from copy import deepcopy
 from functools import reduce
 from itertools import cycle
 
+# ITERABLE PARSERESULTS?
+#https://stackoverflow.com/questions/26591485/incremental-but-complete-parsing-with-pyparsing
+#https://stackoverflow.com/questions/16643507/pyparsing-iterating-over-parsedresults
+
 #from cPyparsing import (LineEnd, Literal, Empty, Word, 
 #    printables, ZeroOrMore, Optional, Group, restOfLine, 
 #    Regex, Combine, LineStart, ParserElement, OneOrMore,
