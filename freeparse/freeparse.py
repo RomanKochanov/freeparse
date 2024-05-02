@@ -1,31 +1,32 @@
 import io
 import re
 import json
-import cPyparsing as pp
+#import cPyparsing as pp
+import pyparsing
 
 from copy import deepcopy
 
 from functools import reduce
 from itertools import cycle
 
-from cPyparsing import (LineEnd, Literal, Empty, Word, 
-    printables, ZeroOrMore, Optional, Group, restOfLine, 
-    Regex, Combine, LineStart, ParserElement, OneOrMore,
-    White, StringEnd)
+#from cPyparsing import (LineEnd, Literal, Empty, Word, 
+#    printables, ZeroOrMore, Optional, Group, restOfLine, 
+#    Regex, Combine, LineStart, ParserElement, OneOrMore,
+#    White, StringEnd)
 
 #import pyparsing.common as pyparsing_common
-from cPyparsing import pyparsing_common
+#from cPyparsing import pyparsing_common
 
 import xml.etree.ElementTree as ET
 
 #ParserElement.enablePackrat() # enable caching
 
-SOL = LineStart()
-EOL = LineEnd()
-EMPTY = Empty()
-WHITE = White() # not only space, but tab + other whitespace symbols
-WHITESPACE = Literal(' ').leaveWhitespace() # only whitespace
-EOF = StringEnd()
+#SOL = LineStart()
+#EOL = LineEnd()
+#EMPTY = Empty()
+#WHITE = White() # not only space, but tab + other whitespace symbols
+#WHITESPACE = Literal(' ').leaveWhitespace() # only whitespace
+#EOF = StringEnd()
 
 VARSPACE = {
     'VERBOSE': False,
@@ -35,7 +36,7 @@ VARSPACE = {
 
 # Set default whitespace characters.
 #ParserElement.set_default_whitespace_chars(' \t')
-ParserElement.setDefaultWhitespaceChars(' \t')
+##ParserElement.setDefaultWhitespaceChars(' \t')
 #ParserElement.set_default_whitespace_chars(' \t\n') # default
 
 def _print(*args):
@@ -59,15 +60,72 @@ def convert_to_float(tokens):
         return float(val)
 
 # Custom pyparsing_common class to parse Fortran-generated floats (D-exponents)
-class pyparsing_common_(pyparsing_common):    
-    sci_real = (
-        Regex(r"[+-]?(?:\d+(?:[eEdD][+-]?\d+)|(?:\d+\.\d*|\.\d+)(?:[eEdD][+-]?\d+)?)")
-        .setName("real number with scientific notation")
-        .setParseAction(convert_to_float)
-    )
+#class pyparsing_common_(pyparsing_common):    
+#    sci_real = (
+#        Regex(r"[+-]?(?:\d+(?:[eEdD][+-]?\d+)|(?:\d+\.\d*|\.\d+)(?:[eEdD][+-]?\d+)?)")
+#        .setName("real number with scientific notation")
+#        .setParseAction(convert_to_float)
+#    )
 
 #ppc = pyparsing_common # default set of parsers
-ppc = pyparsing_common_ # custom set of parsers
+##ppc = pyparsing_common_ # custom set of parsers
+
+class Parser:
+    
+    """ 
+    Interface for two similar parsing libraries:
+           ->  pyparsing (default)
+           ->  cPyparsing (compiled version of pyparsing)
+    """
+    
+    def __init__(self,parser_module):
+                
+        self.LineEnd = parser_module.LineEnd
+        self.Literal = parser_module.Literal
+        self.Empty = parser_module.Empty
+        self.Word = parser_module.Word
+        self.printables = parser_module.printables
+        self.ZeroOrMore = parser_module.ZeroOrMore
+        self.Optional = parser_module.Optional
+        self.Group = parser_module.Group
+        self.restOfLine = parser_module.restOfLine
+        self.Regex = parser_module.Regex
+        self.Combine = parser_module.Combine
+        self.LineStart = parser_module.LineStart
+        self.ParserElement = parser_module.ParserElement
+        self.OneOrMore = parser_module.OneOrMore
+        self.White = parser_module.White
+        self.StringEnd = parser_module.StringEnd
+        
+        self.SOL = self.LineStart()
+        self.EOL = self.LineEnd()
+        self.EMPTY = self.Empty()
+        self.WHITE = self.White() # not only space, but tab + other whitespace symbols
+        self.WHITESPACE = self.Literal(' ').leaveWhitespace() # only whitespace
+        self.EOF = self.StringEnd()
+        
+        parser_module.ParserElement.setDefaultWhitespaceChars(' \t')
+        
+        class pyparsing_common_(parser_module.pyparsing_common):    
+            sci_real = (
+                self.Regex(r"[+-]?(?:\d+(?:[eEdD][+-]?\d+)|(?:\d+\.\d*|\.\d+)(?:[eEdD][+-]?\d+)?)")
+                    .setName("real number with scientific notation")
+                    .setParseAction(convert_to_float)
+            )
+            
+        self.ppc = pyparsing_common_ # custom set of parsers
+        
+        self.pp = parser_module
+
+try:
+    import cPyparsing
+    VARSPACE['PARSER'] = Parser(cPyparsing)
+except ImportError:
+    print('FreeParse: could not import cPyparsing')
+    VARSPACE['PARSER'] = Parser(pyparsing)
+
+V = VARSPACE
+print('FreeParse: using %s as a core parser module (on import)'%V['PARSER'].pp.__name__)
 
 # FORMAT PROCESSORS FOR GENERATION OF VALUE-BASED TAGS
 class Formatter:
@@ -679,7 +737,7 @@ class TreeFLOAT(ParsingTreeValue):
     
     def init_grammar(self):
         #return ppc.number()
-        return ppc.sci_real()
+        return V['PARSER'].ppc.sci_real()
     
     def get_type(self):
         return float
@@ -688,7 +746,7 @@ class TreeINT(ParsingTreeValue):
 
     def init_grammar(self):
         #return ppc.number()
-        return ppc.signed_integer()
+        return V['PARSER'].ppc.signed_integer()
     
     def get_type(self):
         return int
@@ -701,7 +759,7 @@ class TreeNUMBER(ParsingTreeValue):
     }
 
     def init_grammar(self):
-        return ppc.number()
+        return V['PARSER'].ppc.number()
     
     def get_type(self):
         typ = self.__xmlroot__.get('type')
@@ -713,7 +771,7 @@ class TreeFORTRAN(TreeNUMBER):
     """ Fortran-formatted numbers, e.g. 1.e-10, 1.2-307 etc... """
     
     def init_grammar(self):
-        return Regex('[+-]?(?:\.|\d+\.?)\d*([de][+-]?\d+)?(_[a-z\d]+)?')
+        return V['PARSER'].Regex('[+-]?(?:\.|\d+\.?)\d*([de][+-]?\d+)?(_[a-z\d]+)?')
         
     def get_type(self): # TODO!!!
         raise NotImplementedError
@@ -731,7 +789,7 @@ class TreeBUFFER(ParsingTreeValue):
         if not nchars: raise Exception('BUFFER tag requires "nchars"'
             ' parameter to be supplied')
         nchars = int(nchars)
-        return Regex('.{%d}'%nchars).leaveWhitespace()
+        return V['PARSER'].Regex('.{%d}'%nchars).leaveWhitespace()
     
     def get_type(self):
         typ = self.__xmlroot__.get('type')
@@ -741,7 +799,7 @@ class TreeBUFFER(ParsingTreeValue):
 class TreeSTR(ParsingTreeValue):
 
     def init_grammar(self):
-        return Word(printables)
+        return V['PARSER'].Word(V['PARSER'].printables)
     
     def get_type(self):
         return str
@@ -752,7 +810,7 @@ class TreeLITERAL(ParsingTreeValue):
         inp = self.__xmlroot__.get('input')
         if not inp: raise Exception('LITERAL tag must '
                 'have "input" parameter specified')
-        return Literal(inp)
+        return V['PARSER'].Literal(inp)
     
     def get_type(self):
         return str
@@ -768,8 +826,9 @@ class TreeWORD(ParsingTreeValue):
         inp = self.__xmlroot__.get('input')
         #if not inp: inp = printables
         #if not inp: inp = pyparsing_unicode.printables
-        if not inp: inp = pp.unicode.printables
-        return Word(inp)
+        #if not inp: inp = pp.unicode.printables
+        if not inp: inp = V['PARSER'].pp.unicode.printables
+        return V['PARSER'].Word(inp)
     
     def get_type(self):
         return str
@@ -782,7 +841,7 @@ class TreeWORD(ParsingTreeValue):
 class TreeRESTOFLINE(ParsingTreeValue):
     
     def init_grammar(self):
-        return restOfLine()
+        return V['PARSER'].restOfLine()
     
     def get_type(self):
         return str
@@ -798,13 +857,13 @@ class TreeREGEX(ParsingTreeValue):
         regex = self.__xmlroot__.get('input')
         if not regex: 
             raise Exception('regex is empty')
-        return Regex(regex)
+        return V['PARSER'].Regex(regex)
     
     def get_type(self):
         return str
         
     def post_process(self,grammar):
-        return Group(grammar)
+        return V['PARSER'].Group(grammar)
 
     def check_data(self,data):
         regex = self.__xmlroot__.get('input')
@@ -819,13 +878,13 @@ class TreeTEXT(ParsingTreeValue):
         if not (begin and end): 
             raise Exception('text should have both "begin" and "end" fields')
         regex = begin+'[\s\S]*'+end
-        return Regex(regex)
+        return V['PARSER'].Regex(regex)
     
     def get_type(self):
         return str
 
     def post_process(self,grammar):
-        return Group(grammar)
+        return V['PARSER'].Group(grammar)
 
     def check_data(self,data):        
         begin = self.__xmlroot__.get('begin')
@@ -863,7 +922,7 @@ class ParsingTreeContainer(ParsingTree):
                 _print('============================')
                 parent.__buffer__.relocate_buffer(key,buf)
             
-            grammar = Group(grammar) # without this nested structures work badly
+            grammar = V['PARSER'].Group(grammar) # without this nested structures work badly
             
             grammar.setParseAction(lambda tokens: move_to_parent(self))
                 
@@ -1126,7 +1185,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         add_to_buffer = trigger_factory(buf,HEAD,restofline) # produce with factory (proper closures!!)        
         
         # make a single grammar for body
-        grammar_body = Regex(regex)
+        grammar_body = V['PARSER'].Regex(regex)
 
         grammar_body.setParseAction(add_to_buffer)
 
@@ -1148,7 +1207,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         #grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace() # WORKS, BUT NOT WITH LEADING EOLS
         #grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-UNAWARE PARSING
         
-        grammar_body = ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
+        grammar_body = V['PARSER'].ZeroOrMore(grammar_body+V['PARSER'].EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
                 
         # create a tail grammar, if present
         if self.__tail__ is not None:
@@ -1336,12 +1395,12 @@ class TreeFIXCOL2(TreeFIXCOL): # TODO: Make it a child ParsingTreeCollection (ne
         add_to_buffer = trigger_factory(buf,types,masks) # produce with factory (proper closures!!)        
         
         # make a single grammar for body
-        grammar_body = Regex(regex)
+        grammar_body = V['PARSER'].Regex(regex)
 
         if rol_name is None: # ignore rest of line
-            grammar_body = grammar_body.setParseAction(add_to_buffer) + restOfLine()
+            grammar_body = grammar_body.setParseAction(add_to_buffer) + V['PARSER'].restOfLine()
         else:
-            grammar_body = (grammar_body + restOfLine(rol_name)).setParseAction(add_to_buffer)
+            grammar_body = (grammar_body + V['PARSER'].restOfLine(rol_name)).setParseAction(add_to_buffer)
 
         _print('collect_grammar_fixcol>>>grammar_body',grammar_body)
         
@@ -1361,7 +1420,7 @@ class TreeFIXCOL2(TreeFIXCOL): # TODO: Make it a child ParsingTreeCollection (ne
         #grammar_body = ZeroOrMore(EOL+grammar_body).leaveWhitespace() # WORKS, BUT NOT WITH LEADING EOLS
         #grammar_body = ZeroOrMore(EOL) + ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-UNAWARE PARSING
         
-        grammar_body = ZeroOrMore(grammar_body+EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
+        grammar_body = V['PARSER'].ZeroOrMore(grammar_body+V['PARSER'].EOL).leaveWhitespace() # WORKS FOR EOL-AWARE PARSING
                 
         # create a tail grammar, if present
         if self.__tail__ is not None:
@@ -1412,7 +1471,7 @@ class ParsingTreeAux(ParsingTree):
 class TreeOPTIONAL(ParsingTreeAux):
     
     def process(self,grammar_body,grammar_tail):
-        grammar_body = Optional(grammar_body)
+        grammar_body = V['PARSER'].Optional(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
         
     def handle_generation_error(self):
@@ -1423,7 +1482,7 @@ class TreeSOL(ParsingTreeAux):
 
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
-        g = SOL
+        g = V['PARSER'].SOL
         if grammar: g += grammar
         return g
 
@@ -1431,7 +1490,7 @@ class TreeEOF(ParsingTreeAux):
 
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
-        g = EOF
+        g = V['PARSER'].EOF
         if grammar: g += grammar
         return g
 
@@ -1441,7 +1500,7 @@ class TreeWhitespace(ParsingTreeAux): # TODO: Similar to TreeEOL. Refactor to a 
 
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
-        g = WHITESPACE*self.__nspaces__
+        g = V['PARSER'].WHITESPACE*self.__nspaces__
         if grammar: g += grammar
         return g
     
@@ -1475,9 +1534,9 @@ class TreeWhitespaces(ParsingTreeAux):
         #if not nspaces: raise Exception('Invalid use of n in SS')
         if nspaces:
             nspaces = int(nspaces)
-            g = WHITESPACE*nspaces
+            g = V['PARSER'].WHITESPACE*nspaces
         else:
-            g = OneOrMore(WHITESPACE)
+            g = V['PARSER'].OneOrMore(V['PARSER'].WHITESPACE)
         if grammar: g += grammar
         return g
 
@@ -1524,7 +1583,7 @@ class TreeEOL(ParsingTreeAux):
 
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
-        g = EOL*self.__neols__
+        g = V['PARSER'].EOL*self.__neols__
         if grammar: g += grammar
         return g
     
@@ -1558,9 +1617,9 @@ class TreeEOLS(ParsingTreeAux):
         #if not neols: raise Exception('Invalid use of n in EOLS')
         if neols:
             neols = int(neols)
-            g = EOL*neols
+            g = V['PARSER'].EOL*neols
         else:
-            g = OneOrMore(EOL)
+            g = V['PARSER'].OneOrMore(V['PARSER'].EOL)
         if grammar: g += grammar
         return g
 
@@ -1580,7 +1639,7 @@ class TreeSKIPLINE(ParsingTreeAux):
     def process(self,grammar_body,grammar_tail):
         grammar = sum_grammars(grammar_body,grammar_tail)
         #g = SOL+restOfLine+EOL # this should be right???
-        g = restOfLine+EOL
+        g = V['PARSER'].restOfLine+V['PARSER'].EOL
         if grammar: g += grammar
         return g
 
@@ -1597,7 +1656,7 @@ class TreeSKIPLINES(ParsingTreeAux):
         if not nlines: raise Exception('n empty in SKIPLINES')
         nlines = int(nlines)
         #g = SOL+restOfLine+EOL # this should be right???
-        g = restOfLine+EOL
+        g = V['PARSER'].restOfLine+V['PARSER'].EOL
         g *= nlines
         if grammar: g += grammar
         return g
@@ -1619,13 +1678,13 @@ class TreeLEAVEWHITESPACE(ParsingTreeAux):
 class TreeCOMBINE(ParsingTreeAux): 
     
     def process(self,grammar_body,grammar_tail):
-        grammar_body = Combine(grammar_body)
+        grammar_body = V['PARSER'].Combine(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
 
 class TreeGROUP(ParsingTreeAux): 
     
     def process(self,grammar_body,grammar_tail):
-        grammar_body = Group(grammar_body)
+        grammar_body = V['PARSER'].Group(grammar_body)
         return sum_grammars(grammar_body,grammar_tail)
 
 DISPATCHER_TAGS = {
