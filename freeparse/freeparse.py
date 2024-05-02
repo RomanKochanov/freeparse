@@ -43,7 +43,7 @@ def _print(*args):
     if VARSPACE['VERBOSE']: print(*args)
 
 class GenerationError(Exception):
-    "Raised when the raw file generation has been failed"
+    """ Raised when the raw file generation has been failed """
     pass
 
 # Custom converting to float
@@ -1054,9 +1054,6 @@ class ffloat(float):
 class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (needs some refactoring!)
     """
     Class for parsing fixed-width fields using Jeanny markup.
-    This class by default produces a single dictionary item.
-    To obtain a list if items to convert to Jeanny3 collection,
-    use the enclosing LOOP tag.
     """    
 
     @classmethod
@@ -1459,7 +1456,8 @@ class TreeFIXCOL2(TreeFIXCOL): # TODO: Make it a child ParsingTreeCollection (ne
 
 class ParsingTreeAux(ParsingTree):
     """
-    Abstract class for non-container tags (optional, eol etc...).
+    Abstract class for non-saving tags (optional, eol etc...).
+    These tags do not push any values to parent's buffer.
     """    
 
     @classmethod
@@ -1727,6 +1725,7 @@ DISPATCHER_TAGS = {
     'S8': TreeWhitespace8,
     'S9': TreeWhitespace9,
     'SS': TreeWhitespaces,
+    'SPACES': TreeWhitespaces,
     'EOL': TreeEOL,
     'EOL2': TreeEOL2,
     'EOL3': TreeEOL3,
