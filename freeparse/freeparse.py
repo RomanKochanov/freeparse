@@ -1032,6 +1032,25 @@ class TreeLOOP(ParsingTreeContainer):
     #        _print('TreeLOOP.get_data_generator>>>datum',datum)
     #        yield el,datum
 
+class ffloat(float): 
+    """
+    Fortran-type float dealing with peculiarities of the Fortran
+    formatting, i.e. "ghost" exponent: "1.426-100"
+    """
+    
+    def __new__(self,value):
+        try:
+            return float.__new__(self,value)
+        except ValueError:
+            value = value.strip()
+            regex = '^([+-]?\d*\.?\d*)([+-]\d+)$'
+            a,b = re.search(regex,value).groups()
+            value = float(a)*10**int(b)
+            return float.__new__(self,value)
+    
+    def __init__(self,value):
+        float.__init__(value)
+        
 class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (needs some refactoring!)
     """
     Class for parsing fixed-width fields using Jeanny markup.
@@ -1097,7 +1116,7 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
         
         In the data buffer, comments are marked with hashtag (#) and ignored.
         """
-        TYPES = {'float':float,'int':int,'str':str}        
+        TYPES = {'float':float,'int':int,'str':str,'ffloat':ffloat}        
                 
         # initialization
         f = io.StringIO(self.__text__)

@@ -1427,6 +1427,7 @@ iso  J     N    mean_res         rms   rms/max_res   max_res
 """
     BUFFER = """THIS IS A HEADER
 
+
 ***** J STATISTICS *****
 
 iso  J     N    mean_res         rms   rms/max_res   max_res
@@ -1447,7 +1448,35 @@ iso  J     N    mean_res         rms   rms/max_res   max_res
  1  48   582  -540608.16 13018191.69      -24.08************
 """
     return do_test(XML,BUFFER)
-    
+
+def test_fixcol_fformat(): # test Fortran format
+    XML = """
+<DICT>
+
+THIS IS A HEADER<EOL2/>
+
+<FIXCOL name="parameters" restofline="comment">
+//HEADER
+0 i INT
+1 sw FFLOAT
+
+//DATA
+0_1__________
+<!--
+ 1  1.426-100
+ 2  1.426E-10
+-->
+</FIXCOL>
+
+</DICT>
+"""
+    BUFFER = """THIS IS A HEADER
+
+ 1  1.426-100
+ 2  1.426E-10
+"""
+    return do_test(XML,BUFFER)
+
 TEST_CASES = [
     test_part0a,
     test_part0b,
@@ -1481,6 +1510,7 @@ TEST_CASES = [
     test_fixcol_asterisc_2,
     test_fixcol_asterisc_2_simple1,
     test_fixcol_asterisc_3,
+    test_fixcol_fformat,
 ]
 
 def get_test_cases(func_names):
