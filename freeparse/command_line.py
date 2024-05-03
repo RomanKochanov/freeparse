@@ -153,6 +153,11 @@ def main():
         help='Encoding of the translated file')
         
     args = parser.parse_args() 
+    
+    # Switch back to "slow" parser
+    parser = Parser(pyparsing)
+    VARSPACE['PARSER'] = parser
+    print('Switching to',parser.pp.__name__)
         
     # Create Parsing Tree from the XML file.
     #if not args.grammar:
