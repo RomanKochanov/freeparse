@@ -1180,13 +1180,17 @@ class TreeFIXCOL(ParsingTree): # TODO: Make it a child ParsingTreeCollection (ne
             widths = line.rstrip(); break # readline doesn't work because of the "Mixing iteration and read methods"
         #matches = re.finditer('([^_]+_*)',widths) # fails when no underscore between columns tokens
         matches = re.finditer('([^_]_*)',widths)
-        tokens = []; names = []; line_length = 0
+        tokens = set(); names = []; line_length = 0
         for match in matches:
             i_start = match.start()
             i_end = match.end()
             token = re.sub('_','',widths[i_start:i_end])
-            if token not in HEAD: continue                
-            tokens.append(token)
+            if token not in HEAD:
+                continue
+            if token not in tokens:
+                tokens.add(token)
+            else:
+                raise Exception('token "%s" appears multiple times in //DATA'%token)
             names.append(HEAD[token]['name'])
             HEAD[token]['i_start'] = i_start
             HEAD[token]['i_end'] = i_end
@@ -1793,6 +1797,8 @@ def create_from_text(textbuf):
     """
     with io.StringIO(textbuf) as f:
         return create_from_file(f)
+
+create_from_string = create_from_text # useful alias
 
 def get_data(parsingtree):
     """
