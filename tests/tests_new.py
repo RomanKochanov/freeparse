@@ -3,13 +3,19 @@ import sys
 import json
 
 import argparse
+import pyparsing
 
 from time import time
 from jeanny3 import Collection, uuid
 
-from freeparse import ET, ParsingTree, VARSPACE
+from freeparse import ET, ParsingTree, VARSPACE, Parser
 
 from unittests import runtest 
+
+# Switch back to "slow" parser
+parser = Parser(pyparsing)
+VARSPACE['PARSER'] = parser
+print('Switching to',parser.pp.__name__)
 
 def do_test1(XML,BUFFER):
     """ simple tests without back-loop """
@@ -1426,7 +1432,6 @@ iso  J     N    mean_res         rms   rms/max_res   max_res
 </DICT>
 """
     BUFFER = """THIS IS A HEADER
-
 
 ***** J STATISTICS *****
 
